@@ -5,7 +5,21 @@ import time
 import signal
 import psutil
 
+from mock import patch
+
 from pkit.process import ProcessOpen, Process
+
+
+class TestProcessOpen(unittest.TestCase):
+    def test_init_with_raising_fork(self):
+        process = Process(target=lambda: time.sleep(100))
+        process._child = 'abc 123'  # We just want to check the value will be None
+
+        with patch('os.fork', side_effect=OSError()):
+            with self.assertRaises(OSError):
+                ProcessOpen(process)
+
+        self.assertIsNone(process._child)
 
 
 class TestProcess(unittest.TestCase):
