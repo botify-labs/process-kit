@@ -1,5 +1,6 @@
 import sys
 import os
+import signal
 import psutil
 import traceback
 
@@ -45,6 +46,8 @@ class ProcessOpen(Popen):
         try:
             self.pid = os.fork()
             if self.pid == 0:
+                def sigterm(signum, sigframe):
+                    os._exit(0)
                 exit_code = self.process.create()
                 sys.stdout.flush()
                 sys.stderr.flush()
@@ -114,11 +117,22 @@ class Process(object):
         self.target_args = tuple(args)
         self.target_kwargs = dict(kwargs)
 
+        def sigchld(signum, sigframe):
+            if self._child is not None and self._child.pid:
+                os.waitpid(self._child.pid, os.WNOHANG)
+                self.clean()
+        signal.signal(signal.SIGCHLD, sigchld)
+
     def __str__(self):
         return '<{0}>'.format(self.name)
 
     def __repr__(self):
         return self.__str__()
+
+    # def sigchld(self, signum, sigframe):
+    #     if self._child:
+    #         os.waitpid(self._child.pid, os.WNOHANG)
+    #         self.clean()
 
     def create(self):
         """Method to be called when the process child is forked"""
@@ -126,8 +140,6 @@ class Process(object):
         # SystemExit and any uncaught exceptions
         # while run() method execution.
         try:
-            self._current = self
-
             try:
                 sys.stdin.close()
                 sys.stdin = open(os.devnull)
@@ -137,6 +149,7 @@ class Process(object):
             # Run the process target and cleanup
             # the instance afterwards.
             try:
+                self._current = self
                 self.run()
                 exitcode = 0
             finally:
