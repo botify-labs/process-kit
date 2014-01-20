@@ -8,6 +8,22 @@ JOIN_RESTART_POLICY = 0
 TERMINATE_RESTART_POLICY = 1
 
 
+def get_current_process():
+    class CurrentProcess(Process):
+        def __init__(self, *args, **kwargs):
+            self._child = None
+            self._parent = None
+            self._parent_pid = None
+            self.name = 'MainProcess {1}'.format(self.__class__.__name__, os.getpid())
+            self.daemonic = False
+
+        @property
+        def pid(self):
+            return os.getpid()
+
+    return CurrentProcess()
+
+
 class ProcessOpen(Popen):
     """ProcessOpen forks the current process and runs a Process object
     create() method in the child process.
@@ -84,17 +100,17 @@ class Process(object):
     :param  kwargs: keyword arguments to provide to the target
     :type   kwargs: dict
     """
-    def __init__(self, target=None, name=None, args=(), kwargs={}):
+    def __init__(self, target=None, name=None, parent=False, args=(), kwargs={}):
+        self._current = get_current_process()
+        self._parent_pid = self._current.pid
         self._child = None
         self._parent = None
-        self._parent_pid = os.getpid()
-        self.name = name or '{0} {1}'.format(self.__class__.__name__, os.getpid())
 
+        self.name = name or '{0} {1}'.format(self.__class__.__name__, os.getpid())
+        self.daemonic = False
         self.target = target
         self.target_args = tuple(args)
         self.target_kwargs = dict(kwargs)
-
-        self.daemonic = False
 
     def __str__(self):
         return '<{0}>'.format(self.name)
@@ -108,6 +124,8 @@ class Process(object):
         # SystemExit and any uncaught exceptions
         # while run() method execution.
         try:
+            self._current = self
+
             try:
                 sys.stdin.close()
                 sys.stdin = open(os.devnull)
@@ -140,6 +158,7 @@ class Process(object):
 
     def clean(self):
         """Cleans up the object child process status"""
+        self._current = get_current_process()
         self._child = None
 
     def run(self):
