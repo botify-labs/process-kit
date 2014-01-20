@@ -178,6 +178,7 @@ class Process(object):
             raise RuntimeError("Cannot start a process twice")
 
         self._child = ProcessOpen(self)
+        self._current = self
 
     def join(self, timeout=None):
         """Awaits on Process exit
