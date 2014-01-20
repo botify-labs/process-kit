@@ -1,5 +1,6 @@
 import sys
 import os
+import psutil
 import traceback
 
 from multiprocessing.forking import Popen
@@ -34,10 +35,11 @@ class ProcessOpen(Popen):
     :param  process: Process whom create method should be called in the child process
     :type   process: pkit.process.Process
     """
-    def __init__(self, process):
+    def __init__(self, process, pipe=None):
         sys.stdout.flush()
         sys.stderr.flush()
         self.process = process
+        self.pipe = pipe
         self.returncode = None
 
         try:
@@ -217,6 +219,11 @@ class Process(object):
     def is_alive(self):
         if self._child is None or not self._child.pid:
             return False
+        elif self._child is not None:
+            try:
+                psutil.Process(self._child.pid).is_running()
+            except psutil.NoSuchProcess:
+                return False
 
         self._child.poll()
 
