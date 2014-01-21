@@ -38,18 +38,6 @@ class TestGetCurrentProcess(unittest.TestCase):
         self.assertTrue(subprocess_infos['get_current_process().pid'] != current_pid)
 
 
-class TestProcessOpen(unittest.TestCase):
-    def test_init_with_raising_fork(self):
-        process = Process(target=lambda: time.sleep(100))
-        process._child = 'abc 123'  # We just want to check the value will be None
-
-        with patch('os.fork', side_effect=OSError()):
-            with self.assertRaises(OSError):
-                ProcessOpen(process)
-
-        self.assertIsNone(process._child)
-
-
 class TestProcess(unittest.TestCase):
     def test__current_attribute_is_main_process_when_not_started(self):
         process = Process()

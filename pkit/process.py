@@ -43,18 +43,17 @@ class ProcessOpen(Popen):
         self.pipe = pipe
         self.returncode = None
 
-        try:
-            self.pid = os.fork()
-            if self.pid == 0:
-                def sigterm(signum, sigframe):
-                    os._exit(0)
-                exit_code = self.process.create()
-                sys.stdout.flush()
-                sys.stderr.flush()
-                os._exit(exit_code)
-        except OSError:
-            self.process.clean()
-            raise
+        self.pid = os.fork()
+        if self.pid == 0:
+            # Make sure to exit on SIGTERM
+            def sigterm(signum, sigframe):
+                os._exit(os.EX_OK)
+            signal.signal(signal.SIGTERM, sigterm)
+
+            exit_code = self.process.create()
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(exit_code)
 
     def wait(self, timeout=None):
         """Polls the forked process for it's status.
@@ -117,11 +116,8 @@ class Process(object):
         self.target_args = tuple(args)
         self.target_kwargs = dict(kwargs)
 
-        def sigchld(signum, sigframe):
-            if self._child is not None and self._child.pid:
-                os.waitpid(self._child.pid, os.WNOHANG)
-                self.clean()
-        signal.signal(signal.SIGCHLD, sigchld)
+        # Bind signals handlers
+        signal.signal(signal.SIGCHLD, self._sigchld)
 
     def __str__(self):
         return '<{0}>'.format(self.name)
@@ -129,10 +125,10 @@ class Process(object):
     def __repr__(self):
         return self.__str__()
 
-    # def sigchld(self, signum, sigframe):
-    #     if self._child:
-    #         os.waitpid(self._child.pid, os.WNOHANG)
-    #         self.clean()
+    def _sigchld(self, signum, sigframe):
+        if self._child is not None and self._child.pid:
+            os.waitpid(self._child.pid, os.WNOHANG)
+            self.clean()
 
     def create(self):
         """Method to be called when the process child is forked"""
@@ -233,11 +229,11 @@ class Process(object):
     def is_alive(self):
         if self._child is None or not self._child.pid:
             return False
-        elif self._child is not None:
-            try:
-                psutil.Process(self._child.pid).is_running()
-            except psutil.NoSuchProcess:
-                return False
+        # elif self._child is not None:
+        #     try:
+        #         psutil.Process(self._child.pid).is_running()
+        #     except psutil.NoSuchProcess:
+        #         return False
 
         self._child.poll()
 
