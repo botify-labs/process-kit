@@ -1,5 +1,6 @@
 import sys
 import os
+from datetime import datetime
 import signal
 import psutil
 import traceback
@@ -36,20 +37,14 @@ class ProcessOpen(Popen):
     :param  process: Process whom create method should be called in the child process
     :type   process: pkit.process.Process
     """
-    def __init__(self, process, pipe=None):
+    def __init__(self, process):
         sys.stdout.flush()
         sys.stderr.flush()
         self.process = process
-        self.pipe = pipe
         self.returncode = None
 
         self.pid = os.fork()
         if self.pid == 0:
-            # Make sure to exit on SIGTERM
-            def sigterm(signum, sigframe):
-                os._exit(os.EX_OK)
-            signal.signal(signal.SIGTERM, sigterm)
-
             exit_code = self.process.create()
             sys.stdout.flush()
             sys.stderr.flush()
@@ -117,7 +112,8 @@ class Process(object):
         self.target_kwargs = dict(kwargs)
 
         # Bind signals handlers
-        signal.signal(signal.SIGCHLD, self._sigchld)
+        signal.signal(signal.SIGCHLD, self._on_sigchld)
+        signal.siginterrupt(signal.SIGCHLD, False)
 
     def __str__(self):
         return '<{0}>'.format(self.name)
@@ -125,9 +121,9 @@ class Process(object):
     def __repr__(self):
         return self.__str__()
 
-    def _sigchld(self, signum, sigframe):
+    def _on_sigchld(self, signum, sigframe):
         if self._child is not None and self._child.pid:
-            os.waitpid(self._child.pid, os.WNOHANG)
+            pid, status = os.waitpid(self._child.pid, os.WNOHANG)
             self.clean()
 
     def create(self):
@@ -229,11 +225,6 @@ class Process(object):
     def is_alive(self):
         if self._child is None or not self._child.pid:
             return False
-        # elif self._child is not None:
-        #     try:
-        #         psutil.Process(self._child.pid).is_running()
-        #     except psutil.NoSuchProcess:
-        #         return False
 
         self._child.poll()
 
