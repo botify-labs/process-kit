@@ -2,6 +2,7 @@ import sys
 import os
 from datetime import datetime
 import signal
+import select
 import psutil
 import traceback
 
@@ -220,6 +221,56 @@ class Process(object):
             os.waitpid(pid_dump, 0)
 
         self.start()
+
+    def wait(self, until=None, args=(), timeout=None):
+        """Wait until the provided predicate about the Process
+        object becomes true.
+
+        Default behavior (if until is not provided) is to call
+        wait on Process subprocess using the provided timeout.
+
+        The method can be useful in some specific case where you
+        would want to wait for specific process states before taking
+        any other actions.
+
+        Typically, it could be useful when you'd like to wait
+        for a sigterm to be taken in account by the process before
+        taking any other actions.
+
+        example:
+            p = Process(target=lambda: time.sleep(100))
+            p.start()
+
+            os.kill(p.pid, signal.SIGTERM)
+            p.wait()
+
+        :param  until: Callable predicate to be evaluated against the
+                       process. Takes a process obj and an args tuple
+                       as input.
+        :type   until: callable
+
+        :param  args: Args to be supplied to the until predicate callable,
+                      default value is an empty tuple.
+        :type   args: tuple
+
+        :param  timeout: timeout in seconds
+        :type   timeout: float
+        """
+        def default_until(self, *args):
+            if self._child is not None:
+                self._child.wait(timeout)
+                return True
+
+        if until is not None and not hasattr(until, '__call__'):
+            raise ValueError("Until parameter must be a callable")
+
+        timeout = timeout or 0.1
+        until = until or default_until
+
+        while until(self, *args) is False:
+            time.sleep(0.1)
+
+        return
 
     @property
     def is_alive(self):
