@@ -61,7 +61,7 @@ class TestProcess(unittest.TestCase):
         # handles the child process waitpid system call
         # when SIGCHLD signal is triggered
         os.kill(pid_dump, signal.SIGTERM)
-        time.sleep(0.1)
+        process.wait()
 
         self.assertFalse(process.is_alive)
         with self.assertRaises(psutil.NoSuchProcess):
@@ -76,7 +76,7 @@ class TestProcess(unittest.TestCase):
         # handles the child process waitpid system call
         # when SIGCHLD signal is triggered
         process.terminate()
-        time.sleep(0.1)
+        process.wait()
 
         self.assertFalse(process.is_alive)
         with self.assertRaises(psutil.NoSuchProcess):
@@ -119,7 +119,7 @@ class TestProcess(unittest.TestCase):
         # handles the child process waitpid system call
         # when SIGCHLD signal is triggered
         os.kill(pid_dump, signal.SIGTERM)
-        time.sleep(0.1)
+        process.wait()
 
         self.assertFalse(process.is_alive)
 
@@ -135,7 +135,7 @@ class TestProcess(unittest.TestCase):
         # handles the child process waitpid system call
         # when SIGCHLD signal is triggered
         os.kill(pid_dump, signal.SIGTERM)
-        time.sleep(0.1)
+        process.wait()
 
         self.assertFalse(process.is_alive)
 
@@ -170,7 +170,7 @@ class TestProcess(unittest.TestCase):
         self.assertTrue(psutil.Process(pid_dump).is_running())
 
         os.kill(pid_dump, signal.SIGTERM)
-        time.sleep(0.1)
+        process.wait()
 
         with self.assertRaises(psutil.NoSuchProcess):
             psutil.Process(pid_dump).is_running()
@@ -187,7 +187,7 @@ class TestProcess(unittest.TestCase):
             process.start()
 
         os.kill(pid_dump, signal.SIGTERM)
-        time.sleep(0.1)
+        process.wait()
 
         with self.assertRaises(psutil.NoSuchProcess):
             psutil.Process(pid_dump).is_running()
@@ -227,6 +227,25 @@ class TestProcess(unittest.TestCase):
         self.assertTrue(psutil.Process(pid_dump).is_running())
 
         process.terminate()
+        process.wait()
+
+        self.assertFalse(process.is_alive)
+        with self.assertRaises(psutil.NoSuchProcess):
+            psutil.Process(pid_dump).is_running()
+
+    def test_terminate_returns_a_failure_exit_code(self):
+        process = Process(target=lambda: time.sleep(100))
+        process.start()
+        pid_dump = process.pid
+
+        self.assertTrue(process.is_alive)
+        self.assertTrue(psutil.Process(pid_dump).is_running())
+
+        process.terminate()
+        process.wait()
+
+        self.assertTrue(hasattr(process, '_exitcode'))
+        self.assertTrue(process._exitcode >= 1)
 
         self.assertFalse(process.is_alive)
         with self.assertRaises(psutil.NoSuchProcess):

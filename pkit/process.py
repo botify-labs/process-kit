@@ -46,19 +46,19 @@ class ProcessOpen(Popen):
 
         self.pid = os.fork()
         if self.pid == 0:
-            exit_code = self.process.create()
+            signal.signal(signal.SIGTERM, self.on_sigterm)
+
+            returncode = self.process.create()
             sys.stdout.flush()
             sys.stderr.flush()
-            os._exit(exit_code)
+            os._exit(returncode)
+
 
     def wait(self, timeout=None):
         """Polls the forked process for it's status.
 
         It uses os.waitpid under the hood, and checks for the
         forked process exit code status.
-
-        The process object cleanup routine method is then called
-        to make sure the object _child attribute is set to None
 
         Poll method source code: http://hg.python.org/cpython/file/ab05e7dd2788/Lib/multiprocessing/forking.py
 
@@ -68,11 +68,13 @@ class ProcessOpen(Popen):
         :returns: the forked process exit code status
         :rtype: int
         """
-        super(ProcessOpen, self).wait(timeout)
+        self.returncode = super(ProcessOpen, self).wait(timeout)
         self.process.clean()
 
+        return self.returncode
+
     def terminate(self):
-        """Kills the running forked process.
+        """Kills the running forked process using the SIGTERM signal
 
         The method checks if the process is actually running, and
         will therefore send it a SIGTERM signal, and wait for it to
@@ -81,8 +83,13 @@ class ProcessOpen(Popen):
         The process object cleanup routine method is then called
         to make sur the object _child attribute is set to None
         """
-        super(ProcessOpen, self).terminate()
-        self.process.clean()
+        self.returncode = super(ProcessOpen, self).terminate()
+
+    def on_sigterm(self, signum, sigframe):
+        """Subprocess sigterm signal handler"""
+        self.returncode = 1
+        # self.process.clean()
+        os._exit(self.returncode)
 
 
 class Process(object):
@@ -105,6 +112,7 @@ class Process(object):
         self._parent_pid = self._current.pid
         self._child = None
         self._parent = None
+        self._exitcode = None
 
         self.name = name or '{0} {1}'.format(self.__class__.__name__, os.getpid())
         self.daemonic = False
@@ -125,6 +133,7 @@ class Process(object):
     def _on_sigchld(self, signum, sigframe):
         if self._child is not None and self._child.pid:
             pid, status = os.waitpid(self._child.pid, os.WNOHANG)
+            self._exitcode = os.WEXITSTATUS(status)
             self.clean()
 
     def create(self):
@@ -141,33 +150,31 @@ class Process(object):
 
             # Run the process target and cleanup
             # the instance afterwards.
-            try:
-                self._current = self
-                self.run()
-                exitcode = 0
-            finally:
-                self.clean()
+            self._current = self
+            self.run()
+            returncode = 0
         except SystemError as err:
             if not err.args:
-                exitcode = 1
+                returncode = 1
             elif isinstance(err.args[0], int):
-                exitcode = err.args[0]
+                returncode = err.args[0]
             else:
                 sys.stderr.write(str(err.args[0]) + '\n')
                 sys.stderr.flush()
-                exitcode = 0 if isinstance(err.args[0], str) else 1
+                returncode = 0 if isinstance(err.args[0], str) else 1
         except:
-            exitcode = 1
+            returncode = 1
             sys.stderr.write('Process {} with pid {}:\n'.format(self.name, self.pid))
             sys.stderr.flush()
             traceback.print_exc()
 
-        return exitcode
+        return returncode
 
     def clean(self):
         """Cleans up the object child process status"""
         self._current = get_current_process()
-        self._child = None
+        if self._child is not None:
+            self._child = None
 
     def run(self):
         """Runs the target with provided args and kwargs in a fork"""
@@ -280,6 +287,10 @@ class Process(object):
         self._child.poll()
 
         return self._child.returncode is None
+
+    @property
+    def exitcode(self):
+        return self._exitcode
 
     @property
     def name(self):
