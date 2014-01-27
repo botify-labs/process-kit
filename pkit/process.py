@@ -35,24 +35,54 @@ class ProcessOpen(Popen):
     If the child process fork fails, the Process object cleanup routine method
     is called to make sure the object _child attribute is set to None.
 
+    The ProcessOpen objects are not reusable and are only meant to be used as a
+    one shot process execution tracker.
+
     :param  process: Process whom create method should be called in the child process
     :type   process: pkit.process.Process
     """
-    def __init__(self, process):
+    READY_FLAG = "READY"
+
+    def __init__(self, process, wait=False, wait_timeout=0):
         sys.stdout.flush()
         sys.stderr.flush()
         self.process = process
         self.returncode = None
 
+        self.ready = None
+        read_pipe, write_pipe = os.pipe()
+
         self.pid = os.fork()
         if self.pid == 0:
             signal.signal(signal.SIGTERM, self.on_sigterm)
+
+            # Once the child process has it's signal handler
+            # we warn the parent process through a pipe
+            if wait is True:
+                self._send_ready_flag(read_pipe, write_pipe)
 
             returncode = self.process.create()
             sys.stdout.flush()
             sys.stderr.flush()
             os._exit(returncode)
+        else:
+            if wait is True:
+                self.ready = self._poll_ready_flag(read_pipe, write_pipe, wait_timeout)
 
+    def _send_ready_flag(self, read_pipe, write_pipe):
+        """Ran in the forked child process"""
+        os.close(read_pipe)
+        write_pipe = os.fdopen(write_pipe, 'w', 0)
+        write_pipe.write(self.READY_FLAG)
+
+    def _poll_ready_flag(self, read_pipe, write_pipe, timeout=0):
+        """Polls the child process read-only pipe for incoming data"""
+        os.close(write_pipe)
+        read, _, _ = select.select([read_pipe], [], [], timeout)
+        if len(read) > 0:
+            return True
+
+        return False
 
     def wait(self, timeout=None):
         """Polls the forked process for it's status.
@@ -83,13 +113,21 @@ class ProcessOpen(Popen):
         The process object cleanup routine method is then called
         to make sur the object _child attribute is set to None
         """
-        self.returncode = super(ProcessOpen, self).terminate()
+        if self.returncode is None:
+            try:
+                os.kill(self.pid, signal.SIGTERM)
+            except OSError, e:
+                if self.wait(timeout=0.1) is None:
+                    raise
+
+            self.returncode = 1
+
+        return self.returncode
 
     def on_sigterm(self, signum, sigframe):
         """Subprocess sigterm signal handler"""
         self.returncode = 1
-        # self.process.clean()
-        os._exit(self.returncode)
+        os._exit(1)
 
 
 class Process(object):
@@ -181,7 +219,7 @@ class Process(object):
         if self.target:
             self.target(*self.target_args, **self.target_kwargs)
 
-    def start(self):
+    def start(self, wait=False, wait_timeout=0):
         """Starts the Process"""
         if os.getpid() != self._parent_pid:
             raise RuntimeError(
@@ -190,7 +228,7 @@ class Process(object):
         if self._child is not None:
             raise RuntimeError("Cannot start a process twice")
 
-        self._child = ProcessOpen(self)
+        self._child = ProcessOpen(self, wait=wait, wait_timeout=wait_timeout)
         self._current = self
 
     def join(self, timeout=None):
@@ -265,7 +303,7 @@ class Process(object):
         """
         def default_until(self, *args):
             if self._child is not None:
-                self._child.wait(timeout)
+                ret = self._child.wait(timeout)
                 return True
 
         if until is not None and not hasattr(until, '__call__'):
