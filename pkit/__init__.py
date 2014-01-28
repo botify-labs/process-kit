@@ -5,5 +5,3 @@ __author__ = "Oleiade"
 __license__ = "MIT"
 
 __version__ = '.'.join(map(str, version))
-
-from pkit.process import Process
