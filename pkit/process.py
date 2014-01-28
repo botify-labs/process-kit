@@ -42,7 +42,7 @@ class ProcessOpen(Popen):
     """
     READY_FLAG = "READY"
 
-    def __init__(self, process, wait=False, wait_timeout=0):
+    def __init__(self, process, wait=False, wait_timeout=1):
         sys.stdout.flush()
         sys.stderr.flush()
         self.process = process
@@ -56,9 +56,9 @@ class ProcessOpen(Popen):
             signal.signal(signal.SIGTERM, self.on_sigterm)
 
             # Once the child process has it's signal handler
-            # we warn the parent process through a pipe
+            # binded we warn the parent process through a pipe
             if wait is True:
-                self._send_ready_flag(read_pipe, write_pipe)
+                self._send_ready_flag(write_pipe, read_pipe)
 
             returncode = self.process.create()
             sys.stdout.flush()
@@ -68,15 +68,19 @@ class ProcessOpen(Popen):
             if wait is True:
                 self.ready = self._poll_ready_flag(read_pipe, write_pipe, wait_timeout)
 
-    def _send_ready_flag(self, read_pipe, write_pipe):
+    def _send_ready_flag(self, write_pipe, read_pipe=None):
         """Ran in the forked child process"""
-        os.close(read_pipe)
+        if read_pipe is not None:
+            os.close(read_pipe)
+
         write_pipe = os.fdopen(write_pipe, 'w', 0)
         write_pipe.write(self.READY_FLAG)
 
-    def _poll_ready_flag(self, read_pipe, write_pipe, timeout=0):
+    def _poll_ready_flag(self, read_pipe, write_pipe=None, timeout=0):
         """Polls the child process read-only pipe for incoming data"""
-        os.close(write_pipe)
+        if write_pipe is not None:
+            os.close(write_pipe)
+
         read, _, _ = select.select([read_pipe], [], [], timeout)
         if len(read) > 0:
             return True
