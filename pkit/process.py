@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import signal
 import select
 import traceback
@@ -96,10 +97,10 @@ class ProcessOpen(Popen):
         :returns: the forked process exit code status
         :rtype: int
         """
-        self.returncode = super(ProcessOpen, self).wait(timeout)
+        returncode = super(ProcessOpen, self).wait(timeout)
         self.process.clean()
 
-        return self.returncode
+        return returncode
 
     def terminate(self):
         """Kills the running forked process using the SIGTERM signal
@@ -157,7 +158,7 @@ class Process(object):
         self.target_kwargs = dict(kwargs)
 
         # Bind signals handlers
-        signal.signal(signal.SIGCHLD, self._on_sigchld)
+        signal.signal(signal.SIGCHLD, self.on_sigchld)
         signal.siginterrupt(signal.SIGCHLD, False)
 
     def __str__(self):
@@ -166,10 +167,11 @@ class Process(object):
     def __repr__(self):
         return self.__str__()
 
-    def _on_sigchld(self, signum, sigframe):
+    def on_sigchld(self, signum, sigframe):
         if self._child is not None and self._child.pid:
             pid, status = os.waitpid(self._child.pid, os.WNOHANG)
-            self._exitcode = os.WEXITSTATUS(status)
+            if pid == self._child.pid:
+                self._exitcode = os.WEXITSTATUS(status)
             self.clean()
 
     def create(self):
@@ -238,9 +240,9 @@ class Process(object):
         if self._child is None:
             raise RuntimeError("Can only join a started process")
 
-        self._child.wait(timeout)
+        self._exitcode = self._child.wait(timeout)
 
-    def terminate(self):
+    def terminate(self, wait=False):
         """Forces the process to stop
 
         The method checks if the process is actually running, and
@@ -251,6 +253,9 @@ class Process(object):
             raise RuntimeError("Can only terminate a started process")
 
         self._child.terminate()
+
+        if wait:
+            self.wait(until=lambda p, *args: p._child is None)
 
     def restart(self, policy=JOIN_RESTART_POLICY):
         if not policy in [JOIN_RESTART_POLICY, TERMINATE_RESTART_POLICY]:
@@ -301,7 +306,7 @@ class Process(object):
         """
         def default_until(self, *args):
             if self._child is not None:
-                ret = self._child.wait(timeout)
+                self._child.wait(timeout)
                 return True
 
         if until is not None and not hasattr(until, '__call__'):

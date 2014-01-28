@@ -73,8 +73,7 @@ class TestProcess(unittest.TestCase):
         # Nota: no need to waitpid as Process already
         # handles the child process waitpid system call
         # when SIGCHLD signal is triggered
-        process.terminate()
-        process.wait()
+        process.terminate(wait=True)
 
         self.assertFalse(process.is_alive)
         with self.assertRaises(psutil.NoSuchProcess):
@@ -224,8 +223,7 @@ class TestProcess(unittest.TestCase):
         self.assertTrue(process.is_alive)
         self.assertTrue(psutil.Process(pid_dump).is_running())
 
-        process.terminate()
-        process.wait()
+        process.terminate(wait=True)
 
         self.assertFalse(process.is_alive)
         with self.assertRaises(psutil.NoSuchProcess):
@@ -239,8 +237,7 @@ class TestProcess(unittest.TestCase):
         self.assertTrue(process.is_alive)
         self.assertTrue(psutil.Process(pid_dump).is_running())
 
-        process.terminate()
-        process.wait()
+        process.terminate(wait=True)
 
         self.assertTrue(hasattr(process, '_exitcode'))
         self.assertTrue(process._exitcode >= 1)
