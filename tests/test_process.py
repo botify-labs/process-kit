@@ -5,8 +5,6 @@ import time
 import signal
 import psutil
 
-from mock import patch
-
 from pkit.process import ProcessOpen, Process, get_current_process
 
 

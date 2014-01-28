@@ -24,7 +24,6 @@ setup(
     ],
 
     install_requires=[
-        'psutil',
-        'mock'
+        'psutil'
     ]
 )
