@@ -81,7 +81,11 @@ class ProcessOpen(Popen):
         if write_pipe is not None:
             os.close(write_pipe)
 
-        read, _, _ = select.select([read_pipe], [], [], timeout)
+        try:
+            read, _, _ = select.select([read_pipe], [], [], timeout)
+        except select.error as e:
+            if e.errno == errno.EINTR:
+                return False  # If select is interrupted, we don't care about ready flag
         if len(read) > 0:
             return True
 
@@ -244,7 +248,10 @@ class Process(object):
         if self._child is None:
             raise RuntimeError("Can only join a started process")
 
-        self._exitcode = self._child.wait(timeout)
+        try:
+            self._exitcode = self._child.wait(timeout)
+        except OSError:
+            pass
 
     def terminate(self, wait=False):
         """Forces the process to stop
@@ -310,7 +317,10 @@ class Process(object):
         """
         def default_until(self, *args):
             if self._child is not None:
-                self._child.wait(timeout)
+                try:
+                    self._child.wait(timeout)
+                except OSError:
+                    pass
                 return True
 
         if until is not None and not hasattr(until, '__call__'):
