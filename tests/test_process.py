@@ -105,6 +105,27 @@ class TestProcessOpen(unittest.TestCase):
         flag = process_open._poll_ready_flag(read_pipe)
         self.assertTrue(flag)
 
+    def test_terminate_exits_with_failure_returncode(self):
+        # Wait for the fork to be made, and the signal to be binded
+        process_open = ProcessOpen(self.process, wait=True)
+        process_pid = process_open.pid
+
+        process_open.terminate()
+        pid, status = os.waitpid(process_pid, 0)
+
+        self.assertTrue(pid is not None)
+        self.assertTrue(pid == process_pid)
+        self.assertTrue(os.WEXITSTATUS(status) == 1)
+        self.assertTrue(process_open.returncode == 1)
+
+    def test_terminate_ignores_already_exited_processes(self):
+        process_open = ProcessOpen(Process(target=None), wait=True)
+        process_open.returncode = 24
+
+        process_open.terminate()
+        self.assertTrue(process_open.returncode == 24)
+
+
 class TestProcess(unittest.TestCase):
     def test__current_attribute_is_main_process_when_not_started(self):
         process = Process()
