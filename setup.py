@@ -22,8 +22,4 @@ setup(
     packages=[
         'pkit',
     ],
-
-    install_requires=[
-        'psutil'
-    ]
 )

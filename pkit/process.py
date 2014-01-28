@@ -2,7 +2,6 @@ import sys
 import os
 import signal
 import select
-import psutil
 import traceback
 
 from multiprocessing.forking import Popen
