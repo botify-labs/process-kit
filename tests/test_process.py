@@ -105,6 +105,17 @@ class TestProcessOpen(unittest.TestCase):
         flag = process_open._poll_ready_flag(read_pipe)
         self.assertTrue(flag)
 
+    def test_wait_actually_waits_for_the_process_to_end(self):
+        short_target = lambda: time.sleep(0.1)
+
+        ts_before = time.time()
+        process_open = ProcessOpen(Process(target=short_target))
+        process_open.wait()
+        ts_after = time.time()
+
+        self.assertTrue(ts_after > ts_before)
+        self.assertTrue((ts_after - ts_before) >= 0.1)
+
     def test_terminate_exits_with_failure_returncode(self):
         # Wait for the fork to be made, and the signal to be binded
         process_open = ProcessOpen(self.process, wait=True)
