@@ -10,6 +10,19 @@ from pkit.process import ProcessOpen, Process, get_current_process
 
 
 class TestGetCurrentProcess(unittest.TestCase):
+    def setUp(self):
+        self.process = Process(target=lambda: time.sleep(10))
+
+    def tearDown(self):
+        if self.process.is_alive is True:
+            process_pid = self.process.pid
+
+            self.process.terminate(wait=True)
+            self.assertFalse(self.process.is_alive)
+
+            with self.assertRaises(psutil.NoSuchProcess):
+                psutil.Process(process_pid).is_running()
+
     def test_get_current_process_in_python_interpreter(self):
         current = get_current_process()
 
@@ -18,23 +31,40 @@ class TestGetCurrentProcess(unittest.TestCase):
         self.assertEqual(current._child, None)
         self.assertEqual(current._parent, None)
 
-    def test_get_current_process_inside_a_subprocess(self):
-        from multiprocessing import Manager
-        def get_child_current(d):
-            d['get_current_process().pid'] = get_current_process().pid
+    def test_get_current_process_while_process_runs(self):
+        current = get_current_process()
 
-        manager = Manager()
-        current_pid = os.getpid()
-        subprocess_infos = manager.dict({'get_current_process().pid': None})
+        self.process.start()
+        process_pid = self.process.pid
 
-        process = Process(target=get_child_current, args=(subprocess_infos,))
-        process.start()
-        process.join()
+        self.assertTrue(hasattr(self.process, '_current'))
+        self.assertTrue(isinstance(self.process._current, Process))
+        self.assertTrue(self.process._current != current)
+        self.assertTrue(self.process._current.pid != current.pid)
 
-        self.assertTrue(process._current.pid == current_pid)
-        self.assertTrue('get_current_process().pid' in subprocess_infos)
-        self.assertTrue(isinstance(subprocess_infos['get_current_process().pid'], int))
-        self.assertTrue(subprocess_infos['get_current_process().pid'] != current_pid)
+    def test_get_current_process_is_reset_to_main_after_terminate(self):
+        current = get_current_process()
+
+        self.process.start(wait=True)
+        process_pid = self.process.pid
+        self.process.terminate(wait=True)
+
+        self.assertTrue(hasattr(self.process, '_current'))
+        self.assertTrue(isinstance(self.process._current, Process))
+        self.assertTrue(self.process._current.pid == current.pid)
+
+    # def test_get_current_process_is_reset_to_main_after_join(self):
+    #     current = get_current_process()
+
+    #     process = Process(target=lambda: time.sleep(0.1))
+    #     self.process.start(wait=True)
+    #     process_pid = self.process.pid
+    #     self.process.join()
+
+    #     self.assertTrue(hasattr(self.process, '_current'))
+    #     self.assertTrue(isinstance(self.process._current, Process))
+    #     self.assertTrue(self.process._current.pid == current.pid)
+
 
 class TestProcessOpen(unittest.TestCase):
     def setUp(self):
@@ -42,7 +72,7 @@ class TestProcessOpen(unittest.TestCase):
 
     def tearDown(self):
         if self.process.is_alive is True:
-            process_pid = self.process
+            process_pid = self.process.pid
 
             self.process.terminate(wait=True)
             self.assertFalse(self.process.is_alive)

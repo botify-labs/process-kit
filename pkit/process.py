@@ -2,6 +2,7 @@ import sys
 import os
 import io
 import time
+import errno
 import signal
 import select
 import traceback
@@ -28,7 +29,7 @@ def get_current_process():
     return CurrentProcess()
 
 
-class ProcessOpen(Popen):
+class ProcessOpen(object):
     """ProcessOpen forks the current process and runs a Process object
     create() method in the child process.
 
@@ -93,6 +94,28 @@ class ProcessOpen(Popen):
 
         return False
 
+    def poll(self, flag=os.WNOHANG):
+        if self.returncode is None:
+            while True:
+                try:
+                    pid, sts = os.waitpid(self.pid, flag)
+                except os.error as e:
+                    if e.errno == errno.EINTR:
+                        continue
+                    # Child process not yet created. See #1731717
+                    # e.errno == errno.ECHILD == 10
+                    return None
+                else:
+                    break
+            if pid == self.pid:
+                if os.WIFSIGNALED(sts):
+                    self.returncode = -os.WTERMSIG(sts)
+                else:
+                    assert os.WIFEXITED(sts)
+                    self.returncode = os.WEXITSTATUS(sts)
+
+        return self.returncode
+
     def wait(self, timeout=None):
         """Polls the forked process for it's status.
 
@@ -107,10 +130,47 @@ class ProcessOpen(Popen):
         :returns: the forked process exit code status
         :rtype: int
         """
-        returncode = super(ProcessOpen, self).wait(timeout)
+        if timeout is None:
+            return self.poll(0)
+
+        deadline = time.time() + timeout
+        delay = 0.0005
+
+        while 1:
+            returncode = self.poll()
+            if returncode is not None:
+                break
+
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+
+            delay = min(delay * 2, remaining, 0.05)
+            time.sleep(delay)
+
         self.process.clean()
 
         return returncode
+
+
+    # def wait(self, timeout=None):
+    #     """Polls the forked process for it's status.
+
+    #     It uses os.waitpid under the hood, and checks for the
+    #     forked process exit code status.
+
+    #     Poll method source code: http://hg.python.org/cpython/file/ab05e7dd2788/Lib/multiprocessing/forking.py
+
+    #     :param  timeout: time interval to poll the forked process status
+    #     :type   timeout: float
+
+    #     :returns: the forked process exit code status
+    #     :rtype: int
+    #     """
+    #     returncode = super(ProcessOpen, self).wait(timeout)
+    #     self.process.clean()
+
+    #     return returncode
 
     def terminate(self):
         """Kills the running forked process using the SIGTERM signal
@@ -161,7 +221,7 @@ class Process(object):
         self._parent = None
         self._exitcode = None
 
-        self.name = name or '{0} {1}'.format(self.__class__.__name__, os.getpid())
+        self.name = name or self.__class__.__name__
         self.daemonic = False
         self.target = target
         self.target_args = tuple(args)
@@ -172,7 +232,7 @@ class Process(object):
         signal.siginterrupt(signal.SIGCHLD, False)
 
     def __str__(self):
-        return '<{0}>'.format(self.name)
+        return '<{0} {1}>'.format(self.name, self.pid)
 
     def __repr__(self):
         return self.__str__()
