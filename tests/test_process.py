@@ -46,12 +46,9 @@ class TestProcessOpen(unittest.TestCase):
 
             self.process.terminate(wait=True)
             self.assertFalse(self.process.is_alive)
-            self.assertRaises(
-                psutil.NoSuchProcess,
-                psutil.Process(process_pid).is_running
-            )
-            # with self.assertRaises(psutil.NoSuchProcess):
-            #     psutil.Process(process_pid).is_running()
+
+            with self.assertRaises(psutil.NoSuchProcess):
+                psutil.Process(process_pid).is_running()
 
     def test_init_with_wait_activated_actually_waits_for_process_to_be_ready(self):
         # default wait timeout lasts one second
@@ -80,7 +77,8 @@ class TestProcessOpen(unittest.TestCase):
         process_open = ProcessOpen(self.process)
         process_open._send_ready_flag(write_pipe, read_pipe)
 
-        self.assertRaises(OSError, os.read, read_pipe, 128)
+        with self.assertRaises(OSError):
+            os.read(read_pipe, 128)
 
     def test__send_ready_flag_actually_sends_the_ready_flag(self):
         read_pipe, write_pipe = os.pipe()
@@ -95,14 +93,16 @@ class TestProcessOpen(unittest.TestCase):
         process_open = ProcessOpen(self.process)
         process_open._poll_ready_flag(read_pipe, write_pipe)
 
-        self.assertRaises(OSError, os.write, write_pipe, "abc 123")
+        with self.assertRaises(OSError):
+            os.write(write_pipe, str('abc 123').encode('UTF-8'))
 
     def test__poll_ready_flag_actually_recv_the_ready_flag(self):
         read_pipe, write_pipe = os.pipe()
         process_open = ProcessOpen(self.process)
 
-        w = os.fdopen(write_pipe, 'w', 0)
+        w = os.fdopen(write_pipe, 'w', 128)
         w.write(ProcessOpen.READY_FLAG)
+        w.close()
 
         flag = process_open._poll_ready_flag(read_pipe)
         self.assertTrue(flag)
@@ -149,10 +149,8 @@ class TestProcess(unittest.TestCase):
 
             self.process.terminate(wait=True)
             self.assertFalse(self.process.is_alive)
-            self.assertRaises(
-                psutil.NoSuchProcess,
-                psutil.Process(process_pid).is_running
-            )
+            with self.assertRaises(psutil.NoSuchProcess):
+                psutil.Process(process_pid).is_running()
 
     def test__current_attribute_is_main_process_when_not_started(self):
         self.assertTrue(self.process._current is not None)
@@ -185,11 +183,8 @@ class TestProcess(unittest.TestCase):
         self.process.terminate(wait=True)
 
         self.assertFalse(self.process.is_alive)
-        self.assertRaises(
-            psutil.NoSuchProcess,
-            psutil.Process,
-            pid_dump
-        )
+        with self.assertRaises(psutil.NoSuchProcess):
+            psutil.Process(pid_dump).is_running()
 
         self.assertTrue(self.process._current is not None)
         self.assertTrue(self.process._current.pid == os.getpid())
@@ -270,11 +265,8 @@ class TestProcess(unittest.TestCase):
         os.kill(pid_dump, signal.SIGTERM)
         self.process.wait()
 
-        self.assertRaises(
-            psutil.NoSuchProcess,
-            psutil.Process,
-            pid_dump
-        )
+        with self.assertRaises(psutil.NoSuchProcess):
+            psutil.Process(pid_dump).is_running()
 
     def test_start_raises_if_already_running(self):
         self.process.start()
@@ -283,16 +275,14 @@ class TestProcess(unittest.TestCase):
         self.assertTrue(self.process.is_alive)
         self.assertTrue(psutil.Process(pid_dump).is_running())
 
-        self.assertRaises(RuntimeError, self.process.start)
+        with self.assertRaises(RuntimeError):
+            self.process.start()
 
         os.kill(pid_dump, signal.SIGTERM)
         self.process.wait()
 
-        self.assertRaises(
-            psutil.NoSuchProcess,
-            psutil.Process,
-            pid_dump
-        )
+        with self.assertRaises(psutil.NoSuchProcess):
+            psutil.Process(pid_dump).is_running()
 
     def test_join_awaits_on_process_exit(self):
         from multiprocessing import Queue
@@ -310,7 +300,8 @@ class TestProcess(unittest.TestCase):
 
     def test_join_raises_when_child_does_not_exist(self):
         process = Process()
-        self.assertRaises(RuntimeError, process.join)
+        with self.assertRaises(RuntimeError):
+            process.join()
 
     def test_terminate_shutsdown_child_process(self):
         from multiprocessing import Queue
@@ -344,7 +335,10 @@ class TestProcess(unittest.TestCase):
 
     def test_terminate_raises_when_child_does_not_exist(self):
         process = Process()
-        self.assertRaises(RuntimeError, process.terminate)
+
+        with self.assertRaises(RuntimeError):
+            process.terminate()
 
     def test_restart_raises_with_invalid_policy(self):
-        self.assertRaises(ValueError, self.process.restart, "that's definetly invalid")
+        with self.assertRaises(ValueError):
+            self.process.restart("that's definetly invalid")

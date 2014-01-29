@@ -1,5 +1,6 @@
 import sys
 import os
+import io
 import time
 import signal
 import select
@@ -73,8 +74,9 @@ class ProcessOpen(Popen):
         if read_pipe is not None:
             os.close(read_pipe)
 
-        write_pipe = os.fdopen(write_pipe, 'w', 0)
+        write_pipe = os.fdopen(write_pipe, 'w', 128)
         write_pipe.write(self.READY_FLAG)
+        write_pipe.close()
 
     def _poll_ready_flag(self, read_pipe, write_pipe=None, timeout=0):
         """Polls the child process read-only pipe for incoming data"""
@@ -123,7 +125,7 @@ class ProcessOpen(Popen):
         if self.returncode is None:
             try:
                 os.kill(self.pid, signal.SIGTERM)
-            except OSError, e:
+            except OSError as e:
                 if self.wait(timeout=0.1) is None:
                     raise
 
@@ -356,7 +358,7 @@ class Process(object):
 
     @name.setter
     def name(self, value):
-        if not isinstance(value, basestring):
+        if not isinstance(value, str):
             raise TypeError(
                 "Name property value has to be a basestring subclass instance. "
                 "Got {0} instead.".format(type(value))
