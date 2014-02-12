@@ -1,6 +1,5 @@
 import sys
 import os
-import io
 import time
 import errno
 import signal
@@ -299,7 +298,10 @@ class Process(object):
             raise RuntimeError("Cannot start a process twice")
 
         self._child = ProcessOpen(self, wait=wait, wait_timeout=wait_timeout)
+        child_pid = self._child.pid
         self._current = self
+
+        return child_pid
 
     def join(self, timeout=None):
         """Awaits on Process exit
