@@ -207,18 +207,25 @@ class Process(object):
     :param  name: sets the process name
     :type   name: str
 
+    :param  on_exit: callback to be invoked on process exit,
+                     will be provided with current process as first
+                     argument. Should be of the form: lambda process: ...
+    :type   on_exit: callable
+
     :param  args: arguments to provide to the target
     :type   args: tuple
 
     :param  kwargs: keyword arguments to provide to the target
     :type   kwargs: dict
     """
-    def __init__(self, target=None, name=None, parent=False, args=(), kwargs={}):
+    def __init__(self, target=None, name=None,
+                 parent=False, on_exit=None, args=(), kwargs={}):
         self._current = get_current_process()
         self._parent_pid = self._current.pid
         self._child = None
         self._parent = None
         self._exitcode = None
+        self._on_exit = on_exit
 
         self.name = name or self.__class__.__name__
         self.daemonic = False
@@ -241,6 +248,10 @@ class Process(object):
             pid, status = os.waitpid(self._child.pid, os.WNOHANG)
             if pid == self._child.pid:
                 self._exitcode = os.WEXITSTATUS(status)
+
+            if self._on_exit:
+                self._on_exit(self)
+
             self.clean()
 
     def create(self):
