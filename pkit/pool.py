@@ -1,4 +1,5 @@
 import os
+import uuid
 import copy
 import signal
 
@@ -19,8 +20,6 @@ class Task(object):
     :param  status: task execution status
     :type   status: member of Task.STATUSES
     """
-    ID_SIZE = 64
-
     READY = 'ready'
     RUNNING = 'running'
     FINISHED = 'finished'
@@ -32,7 +31,7 @@ class Task(object):
     )
 
     def __init__(self, process_pid, _id=None, status=None):
-        self.id = _id or os.urandom(Task.ID_SIZE) 
+        self.id = _id or uuid.uuid4().hex 
         self.exitcode = None
 
         if status:
