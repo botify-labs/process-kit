@@ -298,6 +298,18 @@ class TestProcess(unittest.TestCase):
         with self.assertRaises(psutil.NoSuchProcess):
             psutil.Process(pid_dump).is_running()
 
+    def test_start_returns_process_pid(self):
+        pid = self.process.start()
+        pid_dump = self.process.pid
+
+        self.assertEqual(pid, pid_dump)
+
+        os.kill(pid_dump, signal.SIGTERM)
+        self.process.wait()
+
+        with self.assertRaises(psutil.NoSuchProcess):
+            psutil.Process(pid_dump).is_running()
+
     def test_start_raises_if_already_running(self):
         self.process.start()
         pid_dump = self.process.pid
