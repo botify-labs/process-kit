@@ -86,7 +86,7 @@ class ProcessOpen(object):
         try:
             read, _, _ = select.select([read_pipe], [], [], timeout)
         except select.error as e:
-            if e.errno == errno.EINTR:
+            if hasattr(e, 'errno') and e.errno == errno.EINTR:
                 return False  # If select is interrupted, we don't care about ready flag
         if len(read) > 0:
             return True
