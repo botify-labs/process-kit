@@ -123,7 +123,7 @@ class ProcessPool(object):
     def close(self, timeout=None):
         self.ready = False
         processes_to_join = [task['process'] for (pid,task) in
-                             self._tasks.iteritems()]
+                             self._tasks.items()]
 
         for process in processes_to_join:
             process.join(timeout=timeout)
@@ -131,7 +131,7 @@ class ProcessPool(object):
     def terminate(self, wait=False):
         self.ready = False
         processes_to_stop = [task['process'] for (pid,task) in
-                             self._tasks.iteritems()]
+                             self._tasks.items()]
 
         for process in processes_to_stop:
             process.terminate(wait=wait)
