@@ -29,12 +29,16 @@ def release(pool_name):
         @functools.wraps(method)
         def wrapper(self, *args, **kwargs):
             slots_pool = get_slot_pool(pool_name)
-            res = method(self, *args, **kwargs)
 
             try:
-                slots_pool.release()
-            except OSError:
-                pass
+                res = method(self, *args, **kwargs)
+            except Exception:
+                raise
+            finally:
+                try:
+                    slots_pool.release()
+                except OSError:
+                    pass
 
             return res
 
