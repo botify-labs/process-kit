@@ -40,6 +40,9 @@ class Task(object):
     def __str__(self):
         return '<Task {} {}>'.format(self.id, self.status)
 
+    def finish(self):
+        self._status = Task.FINISHED
+
     @property
     def status(self):
         if not hasattr(self, '_status'):
