@@ -4,11 +4,11 @@ import multiprocessing
 class SlotPool(object):
     """Execution slots pool
 
-    Helps tracking and limiting concurrent executions. Go ahead
-    and define a slots pool to limit the number of concurrent
+    Helps tracking and limiting parrallel executions. Go ahead
+    and define a slots pool to limit the number of parrallel
     executions in your program for example.
 
-    :param  size: Size of the pool, aka how many concurrent
+    :param  size: Size of the pool, aka how many parrallel
     execution slots can be added.
     :type   size: int
     """
