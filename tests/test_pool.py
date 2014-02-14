@@ -17,6 +17,12 @@ class TestTask(unittest.TestCase):
         with self.assertRaises(ValueError):
             t.status = "ABC 123"
 
+    def test_finish_sets_status_to_finished(self):
+        t = Task(1234)
+        t.finish()
+
+        self.assertEqual(t.status, Task.FINISHED)
+
 
 class TestProcessPool(unittest.TestCase):
     def test_execute_acquires_and_releases_slot(self):
@@ -53,6 +59,7 @@ class TestProcessPool(unittest.TestCase):
         time.sleep(0.1)
         self.assertEqual(task.status, Task.FINISHED)
 
+# Will be reactivated once the process.join will be fixed
 #    def test_close_joins_running_tasks(self):
 #        queue = mp.Queue()
 #        pp = ProcessPool(1)
