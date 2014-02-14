@@ -15,7 +15,7 @@ class SlotPool(object):
     def __init__(self, size, *args, **kwargs):
         self.size = size or multiprocessing.cpu_count()
         self.free = self.size
-        self._semaphore = multiprocessing.BoundedSemaphore(self.size)
+        self._semaphore = multiprocessing.Semaphore(self.size)
 
     def acquire(self):
         self._semaphore.acquire()
