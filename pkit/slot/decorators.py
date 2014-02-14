@@ -11,6 +11,8 @@ def acquire(pool_name):
             slots_pool = get_slot_pool(pool_name)
 
             try:
+                # Unix semaphores are acquired through sem_post and sem_wait
+                # syscalls, which can potentially fail.
                 slots_pool.acquire()
             except OSError:
                 pass

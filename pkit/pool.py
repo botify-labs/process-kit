@@ -104,6 +104,8 @@ class ProcessPool(object):
         if not self.ready is True:
             return
 
+        # Unix semaphores are acquired through sem_post and sem_wait
+        # syscalls, which can potentially fail. an OSError is then raised.
         self.slots.acquire()
         process = Process(
             target=target,
