@@ -10,7 +10,7 @@ root = os.path.abspath(os.path.dirname(__file__))
 version = __import__('pkit').__version__
 
 setup(
-    name='Process Kit',
+    name='process-kit',
     version=version,
     license='MIT',
 
