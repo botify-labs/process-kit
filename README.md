@@ -29,7 +29,7 @@ pip install process-kit
 
 ### The Process class
 
-### How to
+#### How to
 
 Just like the ``multiprocessing.Process`` class, there are two different ways to run a task into a unix process using process-kit:
     - By providing a callable ``target`` to it at construction.
@@ -50,8 +50,6 @@ proc.join()
 
 #### Overriding Process.run method
 
-
-
 ```python
 from pkit.process import Process
 
@@ -64,7 +62,9 @@ my_process_obj.start()
 my_process_obj.join()
 ```
 
-### Reusability
+### Augmented features
+
+#### Reusability
 
 Processes are cleaned up once their execution is over. They are hulls for your executions pieces. It means that once a process is collected, it's execution context attributes are reset and you can reuse it for other purpose. 
 
