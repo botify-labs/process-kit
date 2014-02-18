@@ -23,6 +23,12 @@ class TestGetCurrentProcess(unittest.TestCase):
             with self.assertRaises(psutil.NoSuchProcess):
                 psutil.Process(process_pid).is_running()
 
+        # Ensure to collect every children processes left
+        try:
+            os.wait()
+        except OSError:
+            pass
+
     def test_get_current_process_in_python_interpreter(self):
         current = get_current_process()
 
@@ -137,16 +143,76 @@ class TestProcessOpen(unittest.TestCase):
         flag = process_open._poll_ready_flag(read_pipe)
         self.assertTrue(flag)
 
-    def test_wait_actually_waits_for_the_process_to_end(self):
+    def test_non_blocking_poll_does_not_wait_for_process_end(self):
         short_target = lambda: time.sleep(0.1)
 
         ts_before = time.time()
         process_open = ProcessOpen(Process(target=short_target))
-        process_open.wait()
+        poll_retcode = process_open.poll()  # flag=os.WNOHANG
+        popen_retcode = process_open.returncode
+        ts_after = time.time()
+
+        self.assertTrue(ts_after > ts_before)
+        self.assertTrue((ts_after - ts_before) <= 0.1)
+
+        # Ensure ProcessOpen didn't exit
+        self.assertTrue(poll_retcode is None)
+        self.assertTrue(popen_retcode is None)
+
+    def test_blocking_poll_awaits_on_process_end(self):
+        short_target = lambda: time.sleep(0.1)
+
+        ts_before = time.time()
+        process_open = ProcessOpen(Process(target=short_target))
+        poll_retcode = process_open.poll(0)  # hanging waitpid
+        popen_retcode = process_open.returncode
         ts_after = time.time()
 
         self.assertTrue(ts_after > ts_before)
         self.assertTrue((ts_after - ts_before) >= 0.1)
+
+        # Ensure ProcessOpen has exited
+        self.assertTrue(poll_retcode is not None)
+        self.assertTrue(popen_retcode is not None)
+        self.assertEqual(poll_retcode, 0)
+        self.assertEqual(popen_retcode, 0)
+
+    def test_wait_with_none_timeout_waits_for_execution_to_end(self):
+        short_target = lambda: time.sleep(0.1)
+
+        ts_before = time.time()
+        process_open = ProcessOpen(Process(target=short_target))
+        wait_retcode = process_open.wait()  # Calls poll with hanging flag
+        popen_retcode = process_open.returncode
+        ts_after = time.time()
+
+        self.assertTrue(ts_after > ts_before)
+        self.assertTrue((ts_after - ts_before) >= 0.1)
+
+        # Ensure the ProcessOpen has exited
+        self.assertTrue(wait_retcode is not None)
+        self.assertTrue(popen_retcode is not None)
+        self.assertEqual(wait_retcode, 0)
+        self.assertEqual(popen_retcode, 0)
+
+    def test_wait_with_timeout_shorter_than_execution_time_returns_none(self):
+        execution_duration = 0.1
+        wait_timeout = 0.05
+        long_target = lambda: time.sleep(execution_duration)
+
+        ts_before = time.time()
+        process_open = ProcessOpen(Process(target=long_target))
+        wait_retcode = process_open.wait(timeout=wait_timeout)  # timeout < long_target duration 
+        popen_retcode = process_open.returncode
+        ts_after = time.time()
+
+        self.assertTrue(ts_after > ts_before)
+        self.assertTrue((ts_after - ts_before) >= wait_timeout)
+        self.assertTrue((ts_after - ts_before) <= execution_duration)
+
+        # Ensure ProcessOpen has not exited yet
+        self.assertTrue(wait_retcode is None)
+        self.assertTrue(popen_retcode is None)
 
     def test_terminate_exits_with_failure_returncode(self):
         # Wait for the fork to be made, and the signal to be binded
