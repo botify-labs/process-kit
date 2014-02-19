@@ -4,6 +4,6 @@ python:
     - "3.2"
     - "3.3"
 install:
-    - "pip install psutil nose"
-script: nosetests
+    - "pip install psutil pytest"
+script: py.test
 
