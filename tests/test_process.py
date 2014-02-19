@@ -1,4 +1,3 @@
-import unittest
 import pytest
 
 import os
@@ -41,7 +40,7 @@ class TestGetCurrentProcess:
 
     def test_get_current_process_while_process_runs(self):
         current = get_current_process()
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
         process.start()
         process_pid = process.pid
@@ -55,7 +54,7 @@ class TestGetCurrentProcess:
 
     def test_get_current_process_is_reset_to_main_after_terminate(self):
         current = get_current_process()
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
 
         process.start(wait=True)
@@ -83,7 +82,7 @@ class TestGetCurrentProcess:
 
 class TestProcessOpen:
     def test_init_with_wait_activated_actually_waits_for_process_to_be_ready(self):
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
         # default wait timeout lasts one second
         process_open = ProcessOpen(process, wait=True)
@@ -98,7 +97,7 @@ class TestProcessOpen:
         _collect_process(process)
 
     def test_init_without_wait_activated_does_not_wait(self):
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
         process_open = ProcessOpen(process)
         os.kill(process_open.pid, signal.SIGTERM)
@@ -107,7 +106,7 @@ class TestProcessOpen:
         _collect_process(process)
 
     def test_init_with_wait_and_low_provided_wait_timeout(self):
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
         # Set up a really low wait timeout value to check if
         # wait is effectively too short for the ready flag to be
@@ -118,7 +117,7 @@ class TestProcessOpen:
         _collect_process(process)
 
     def test__send_ready_flag_closes_read_pipe_if_provided(self):
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
         read_pipe, write_pipe = os.pipe()
         process_open = ProcessOpen(process)
@@ -130,7 +129,7 @@ class TestProcessOpen:
         _collect_process(process)
 
     def test__send_ready_flag_actually_sends_the_ready_flag(self):
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
         read_pipe, write_pipe = os.pipe()
         process_open = ProcessOpen(process)
@@ -142,7 +141,7 @@ class TestProcessOpen:
         _collect_process(process)
 
     def test__poll_ready_flag_closes_write_pipe_if_provided(self):
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
         read_pipe, write_pipe = os.pipe()
         process_open = ProcessOpen(process)
@@ -154,7 +153,7 @@ class TestProcessOpen:
         _collect_process(process)
 
     def test__poll_ready_flag_actually_recv_the_ready_flag(self):
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
         read_pipe, write_pipe = os.pipe()
         process_open = ProcessOpen(process)
@@ -240,7 +239,7 @@ class TestProcessOpen:
         assert popen_retcode is None
 
     def test_terminate_exits_with_failure_returncode(self):
-        process = Process(target=lambda: time.sleep(10))
+        process = Process(target=lambda: time.sleep(0.1))
 
         # Wait for the fork to be made, and the signal to be binded
         process_open = ProcessOpen(process, wait=True)
@@ -264,9 +263,9 @@ class TestProcessOpen:
         assert process_open.returncode == 24
 
 
-class TestProcess(unittest.TestCase):
+class TestProcess:
     def test__current_attribute_is_main_process_when_not_started(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         assert process._current is not None
         assert process._current.pid == os.getpid()
@@ -275,7 +274,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(process)
 
     def test__current_attribute_is_process_when_started(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         process.start()
         pid_dump = process.pid
@@ -292,7 +291,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(process)
 
     def test__current_attribute_is_main_process_when_stopped_with_terminate(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         process.start()
         pid_dump = process.pid
@@ -316,14 +315,14 @@ class TestProcess(unittest.TestCase):
         pass  # See todo about sigterm proper support
 
     def test_is_alive_is_false_when_in_parent_process(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         assert process.is_alive is False
 
         _collect_process(process)
 
     def test_is_alive_is_false_when_child_is_none(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         process._child = None
 
@@ -332,7 +331,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(process)
 
     def test_is_alive_is_false_when_child_has_no_pid(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         child = ProcessOpen(process)
         child.pid = None
@@ -343,7 +342,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(process)
 
     def test_is_alive_is_false_when_process_has_received_sigterm(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         process.start()
         pid_dump = process.pid
@@ -359,7 +358,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(process)
 
     def test_is_alive_when_process_is_running(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         process.start()
         pid_dump = process.pid
@@ -396,7 +395,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(p)
 
     def test_start_calls_run(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         process.start()
         pid_dump = process.pid
@@ -416,7 +415,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(process)
 
     def test_start_returns_process_pid(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         pid = process.start()
         pid_dump = process.pid
@@ -432,7 +431,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(process)
 
     def test_start_raises_if_already_running(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         process.start()
         pid_dump = process.pid
@@ -491,7 +490,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(process)
 
     # def test_terminate_returns_a_failure_exit_code(self):
-    #     process = Process(target=lambda: time.sleep(100))
+    #     process = Process(target=lambda: time.sleep(0.1))
     #     process.start()
     #     pid_dump = process.pid
 
@@ -516,7 +515,7 @@ class TestProcess(unittest.TestCase):
         _collect_process(process)
 
     def test_restart_raises_with_invalid_policy(self):
-        process = Process(target=lambda: time.sleep(100))
+        process = Process(target=lambda: time.sleep(0.1))
 
         with pytest.raises(ValueError):
             process.restart("that's definetly invalid")
