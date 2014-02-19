@@ -3,7 +3,6 @@
 
 ## What?
 process-kit is an alternative implementation of the python ``multiprocessing.Process`` standard library class.
-It aspires to provide 
 
 ## Why
 
