@@ -161,3 +161,7 @@ process.terminate()
 
 assert EXITED_PID == pid
 ```
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/botify-labs/process-kit/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
