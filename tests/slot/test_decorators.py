@@ -1,16 +1,10 @@
-import unittest
+import pytest
 
-from botify.saas.backend.process.slot.core import get_slot_pool
-import botify.saas.backend.process.slot as slot
+from pkit.slot.core import get_slot_pool
+import pkit.slot as slot
 
 
-class SlotPoolDecoratorsTest(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
+class TestSlotPoolDecoratorsTest:
     def test_slot_acquire(self):
         # declare a slot pool with 3 slots
         testpool = get_slot_pool('testpool', 3)
@@ -23,9 +17,9 @@ class SlotPoolDecoratorsTest(unittest.TestCase):
                 pass
 
         obj = Dummy()
-        self.assertEqual(testpool.free, 3)
+        assert testpool.free == 3
         obj.test()
-        self.assertEqual(testpool.free, 2)
+        assert testpool.free == 2
 
     def test_slot_release(self):
         # declare a slot pool with 3 slots
@@ -38,9 +32,9 @@ class SlotPoolDecoratorsTest(unittest.TestCase):
             def test(self):
                 pass
 
-        self.assertEqual(testpool.free, 3)
+        assert testpool.free == 3
         obj = Dummy()
         testpool.acquire()
         testpool.acquire()
         obj.test()
-        self.assertEqual(testpool.free, 2)
+        assert testpool.free == 2
