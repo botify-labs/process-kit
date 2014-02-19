@@ -20,10 +20,10 @@ def _collect_process(proc):
         with pytest.raises(psutil.NoSuchProcess):
             psutil.Process(process_pid).is_running()
 
-    try:
-        os.wait()
-    except OSError:
-        pass
+        try:
+            os.wait()
+        except OSError:
+            pass
 
 
 class TestGetCurrentProcess:
@@ -77,76 +77,92 @@ class TestGetCurrentProcess:
     #     self.assertTrue(self.process._current.pid == current.pid)
 
 
-class TestProcessOpen(unittest.TestCase):
-    def setUp(self):
-        self.process = Process(target=lambda: time.sleep(10))
-
-    def tearDown(self):
-        if self.process.is_alive is True:
-            process_pid = self.process.pid
-
-            self.process.terminate(wait=True)
-            self.assertFalse(self.process.is_alive)
-
-            with self.assertRaises(psutil.NoSuchProcess):
-                psutil.Process(process_pid).is_running()
-
+class TestProcessOpen:
     def test_init_with_wait_activated_actually_waits_for_process_to_be_ready(self):
+        process = Process(target=lambda: time.sleep(10))
+
         # default wait timeout lasts one second
-        process_open = ProcessOpen(self.process, wait=True)
+        process_open = ProcessOpen(process, wait=True)
 
         # Kill it immediatly
         os.kill(process_open.pid, signal.SIGTERM)
 
         # Ensure the ready flag has been awaited
-        self.assertTrue(process_open.ready)
+        assert process_open.ready is True
+
+
+        _collect_process(process)
 
     def test_init_without_wait_activated_does_not_wait(self):
-        process_open = ProcessOpen(self.process)
+        process = Process(target=lambda: time.sleep(10))
+
+        process_open = ProcessOpen(process)
         os.kill(process_open.pid, signal.SIGTERM)
-        self.assertFalse(process_open.ready)
+        assert process_open.ready is False
+
+        _collect_process(process)
 
     def test_init_with_wait_and_low_provided_wait_timeout(self):
+        process = Process(target=lambda: time.sleep(10))
+
         # Set up a really low wait timeout value to check if
         # wait is effectively too short for the ready flag to be
         # transmitted from the child process to the parent
-        process_open = ProcessOpen(self.process, wait=True, wait_timeout=0.000001)
-        self.assertFalse(process_open.ready)
+        process_open = ProcessOpen(process, wait=True, wait_timeout=0.000001)
+        assert process_open.ready is False
+
+        _collect_process(process)
 
     def test__send_ready_flag_closes_read_pipe_if_provided(self):
+        process = Process(target=lambda: time.sleep(10))
+
         read_pipe, write_pipe = os.pipe()
-        process_open = ProcessOpen(self.process)
+        process_open = ProcessOpen(process)
         process_open._send_ready_flag(write_pipe, read_pipe)
 
-        with self.assertRaises(OSError):
+        with pytest.raises(OSError):
             os.read(read_pipe, 128)
 
+        _collect_process(process)
+
     def test__send_ready_flag_actually_sends_the_ready_flag(self):
+        process = Process(target=lambda: time.sleep(10))
+
         read_pipe, write_pipe = os.pipe()
-        process_open = ProcessOpen(self.process)
+        process_open = ProcessOpen(process)
         process_open._send_ready_flag(write_pipe)
 
         read, _, _ = select.select([read_pipe], [], [], 0)
-        self.assertEqual(len(read), 1)
+        assert len(read) == 1
+
+        _collect_process(process)
 
     def test__poll_ready_flag_closes_write_pipe_if_provided(self):
+        process = Process(target=lambda: time.sleep(10))
+
         read_pipe, write_pipe = os.pipe()
-        process_open = ProcessOpen(self.process)
+        process_open = ProcessOpen(process)
         process_open._poll_ready_flag(read_pipe, write_pipe)
 
-        with self.assertRaises(OSError):
+        with pytest.raises(OSError):
             os.write(write_pipe, str('abc 123').encode('UTF-8'))
 
+        _collect_process(process)
+
     def test__poll_ready_flag_actually_recv_the_ready_flag(self):
+        process = Process(target=lambda: time.sleep(10))
+
         read_pipe, write_pipe = os.pipe()
-        process_open = ProcessOpen(self.process)
+        process_open = ProcessOpen(process)
 
         w = os.fdopen(write_pipe, 'w', 128)
         w.write(ProcessOpen.READY_FLAG)
         w.close()
 
         flag = process_open._poll_ready_flag(read_pipe)
-        self.assertTrue(flag)
+        assert flag is True
+
+        _collect_process(process)
 
     def test_non_blocking_poll_does_not_wait_for_process_end(self):
         short_target = lambda: time.sleep(0.1)
@@ -157,12 +173,12 @@ class TestProcessOpen(unittest.TestCase):
         popen_retcode = process_open.returncode
         ts_after = time.time()
 
-        self.assertTrue(ts_after > ts_before)
-        self.assertTrue((ts_after - ts_before) <= 0.1)
+        assert (ts_after > ts_before) is True
+        assert (ts_after - ts_before) <= 0.1
 
         # Ensure ProcessOpen didn't exit
-        self.assertTrue(poll_retcode is None)
-        self.assertTrue(popen_retcode is None)
+        assert poll_retcode is None
+        assert popen_retcode is None
 
     def test_blocking_poll_awaits_on_process_end(self):
         short_target = lambda: time.sleep(0.1)
@@ -173,14 +189,14 @@ class TestProcessOpen(unittest.TestCase):
         popen_retcode = process_open.returncode
         ts_after = time.time()
 
-        self.assertTrue(ts_after > ts_before)
-        self.assertTrue((ts_after - ts_before) >= 0.1)
+        assert (ts_after > ts_before) is True
+        assert (ts_after - ts_before) >= 0.1
 
         # Ensure ProcessOpen has exited
-        self.assertTrue(poll_retcode is not None)
-        self.assertTrue(popen_retcode is not None)
-        self.assertEqual(poll_retcode, 0)
-        self.assertEqual(popen_retcode, 0)
+        assert poll_retcode is not None
+        assert popen_retcode is not None
+        assert poll_retcode == 0
+        assert popen_retcode == 0
 
     def test_wait_with_none_timeout_waits_for_execution_to_end(self):
         short_target = lambda: time.sleep(0.1)
@@ -191,14 +207,14 @@ class TestProcessOpen(unittest.TestCase):
         popen_retcode = process_open.returncode
         ts_after = time.time()
 
-        self.assertTrue(ts_after > ts_before)
-        self.assertTrue((ts_after - ts_before) >= 0.1)
+        assert (ts_after > ts_before) is True
+        assert (ts_after - ts_before) >= 0.1
 
         # Ensure the ProcessOpen has exited
-        self.assertTrue(wait_retcode is not None)
-        self.assertTrue(popen_retcode is not None)
-        self.assertEqual(wait_retcode, 0)
-        self.assertEqual(popen_retcode, 0)
+        assert wait_retcode is not None
+        assert popen_retcode is not None
+        assert wait_retcode == 0
+        assert popen_retcode == 0
 
     def test_wait_with_timeout_shorter_than_execution_time_returns_none(self):
         execution_duration = 0.1
@@ -211,33 +227,37 @@ class TestProcessOpen(unittest.TestCase):
         popen_retcode = process_open.returncode
         ts_after = time.time()
 
-        self.assertTrue(ts_after > ts_before)
-        self.assertTrue((ts_after - ts_before) >= wait_timeout)
-        self.assertTrue((ts_after - ts_before) <= execution_duration)
+        assert (ts_after > ts_before) is True
+        assert (ts_after - ts_before) >= wait_timeout
+        assert (ts_after - ts_before) <= execution_duration
 
         # Ensure ProcessOpen has not exited yet
-        self.assertTrue(wait_retcode is None)
-        self.assertTrue(popen_retcode is None)
+        assert wait_retcode is None
+        assert popen_retcode is None
 
     def test_terminate_exits_with_failure_returncode(self):
+        process = Process(target=lambda: time.sleep(10))
+
         # Wait for the fork to be made, and the signal to be binded
-        process_open = ProcessOpen(self.process, wait=True)
+        process_open = ProcessOpen(process, wait=True)
         process_pid = process_open.pid
 
         process_open.terminate()
         pid, status = os.waitpid(process_pid, 0)
 
-        self.assertTrue(pid is not None)
-        self.assertTrue(pid == process_pid)
-        self.assertTrue(os.WEXITSTATUS(status) == 1)
-        self.assertTrue(process_open.returncode == 1)
+        assert pid is not None
+        assert pid == process_pid
+        assert os.WEXITSTATUS(status) == 1
+        assert process_open.returncode == 1
+
+        _collect_process(process)
 
     def test_terminate_ignores_already_exited_processes(self):
         process_open = ProcessOpen(Process(target=None), wait=True)
         process_open.returncode = 24
 
         process_open.terminate()
-        self.assertTrue(process_open.returncode == 24)
+        assert process_open.returncode == 24
 
 
 class TestProcess(unittest.TestCase):

@@ -49,7 +49,7 @@ class ProcessOpen(object):
         self.process = process
         self.returncode = None
 
-        self.ready = None
+        self.ready = False
         read_pipe, write_pipe = os.pipe()
 
         self.pid = os.fork()
