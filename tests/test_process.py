@@ -14,7 +14,11 @@ def _collect_process(proc):
     if proc.is_alive is True:
         process_pid = proc.pid
 
-        proc.terminate(wait=True)
+        try:
+            proc.terminate(wait=True)
+        except OSError:
+            return 
+
         assert proc.is_alive is False
 
         with pytest.raises(psutil.NoSuchProcess):
@@ -23,7 +27,7 @@ def _collect_process(proc):
         try:
             os.wait()
         except OSError:
-            pass
+            return
 
 
 class TestGetCurrentProcess:
@@ -68,13 +72,13 @@ class TestGetCurrentProcess:
     #     current = get_current_process()
 
     #     process = Process(target=lambda: time.sleep(0.1))
-    #     self.process.start(wait=True)
-    #     process_pid = self.process.pid
-    #     self.process.join()
+    #     process.start(wait=True)
+    #     process_pid = process.pid
+    #     process.join()
 
-    #     self.assertTrue(hasattr(self.process, '_current'))
-    #     self.assertTrue(isinstance(self.process._current, Process))
-    #     self.assertTrue(self.process._current.pid == current.pid)
+    #     assert hasattr(process, '_current'))
+    #     assert isinstance(process._current, Process))
+    #     assert process._current.pid == current.pid)
 
 
 class TestProcessOpen:
@@ -261,101 +265,115 @@ class TestProcessOpen:
 
 
 class TestProcess(unittest.TestCase):
-    def setUp(self):
-        self.process = Process(target=lambda: time.sleep(100))
-
-    def tearDown(self):
-        if self.process.is_alive is True:
-            process_pid = self.process
-
-            self.process.terminate(wait=True)
-            self.assertFalse(self.process.is_alive)
-            with self.assertRaises(psutil.NoSuchProcess):
-                psutil.Process(process_pid).is_running()
-
     def test__current_attribute_is_main_process_when_not_started(self):
-        self.assertTrue(self.process._current is not None)
-        self.assertTrue(self.process._current.pid == os.getpid())
-        self.assertEqual(
-            self.process._current.name,
-            'MainProcess {0}'.format(self.process._current.pid)
-        )
+        process = Process(target=lambda: time.sleep(100))
+
+        assert process._current is not None
+        assert process._current.pid == os.getpid()
+        assert process._current.name == 'MainProcess {0}'.format(process._current.pid)
+
+        _collect_process(process)
 
     def test__current_attribute_is_process_when_started(self):
-        self.process.start()
-        pid_dump = self.process.pid
+        process = Process(target=lambda: time.sleep(100))
 
-        self.assertTrue(self.process._current is not None)
-        self.assertTrue(self.process._current == self.process)
+        process.start()
+        pid_dump = process.pid
+
+        assert process._current is not None
+        assert process._current == process
 
         # Nota: no need to waitpid as Process already
         # handles the child process waitpid system call
         # when SIGCHLD signal is triggered
         os.kill(pid_dump, signal.SIGTERM)
-        self.process.wait()
+        process.wait()
+
+        _collect_process(process)
 
     def test__current_attribute_is_main_process_when_stopped_with_terminate(self):
-        self.process.start()
-        pid_dump = self.process.pid
+        process = Process(target=lambda: time.sleep(100))
+
+        process.start()
+        pid_dump = process.pid
 
         # Nota: no need to waitpid as Process already
         # handles the child process waitpid system call
         # when SIGCHLD signal is triggered
-        self.process.terminate(wait=True)
+        process.terminate(wait=True)
 
-        self.assertFalse(self.process.is_alive)
-        with self.assertRaises(psutil.NoSuchProcess):
+        assert process.is_alive is False
+        with pytest.raises(psutil.NoSuchProcess):
             psutil.Process(pid_dump).is_running()
 
-        self.assertTrue(self.process._current is not None)
-        self.assertTrue(self.process._current.pid == os.getpid())
-        self.assertTrue(
-            self.process._current.name,
-            'MainProcess {0}'.format(self.process._current.pid)
-        )
+        assert process._current is not None
+        assert process._current.pid == os.getpid()
+        assert process._current.name == 'MainProcess {0}'.format(process._current.pid)
+
+        _collect_process(process)
 
     def test__current_attribute_is_main_process_when_stopped_with_sigterm(self):
         pass  # See todo about sigterm proper support
 
     def test_is_alive_is_false_when_in_parent_process(self):
-        self.assertFalse(self.process.is_alive)
+        process = Process(target=lambda: time.sleep(100))
+
+        assert process.is_alive is False
+
+        _collect_process(process)
 
     def test_is_alive_is_false_when_child_is_none(self):
-        self.process._child = None
+        process = Process(target=lambda: time.sleep(100))
 
-        self.assertFalse(self.process.is_alive)
+        process._child = None
+
+        assert process.is_alive is False
+
+        _collect_process(process)
 
     def test_is_alive_is_false_when_child_has_no_pid(self):
-        child = ProcessOpen(self.process)
-        child.pid = None
-        self.process._child = child
+        process = Process(target=lambda: time.sleep(100))
 
-        self.assertFalse(self.process.is_alive)
+        child = ProcessOpen(process)
+        child.pid = None
+        process._child = child
+
+        assert process.is_alive is False
+
+        _collect_process(process)
 
     def test_is_alive_is_false_when_process_has_received_sigterm(self):
-        self.process.start()
-        pid_dump = self.process.pid
+        process = Process(target=lambda: time.sleep(100))
+
+        process.start()
+        pid_dump = process.pid
 
         # Nota: no need to waitpid as Process already
         # handles the child process waitpid system call
         # when SIGCHLD signal is triggered
         os.kill(pid_dump, signal.SIGTERM)
-        self.process.wait()
+        process.wait()
 
-        self.assertFalse(self.process.is_alive)
+        assert process.is_alive is False
+
+        _collect_process(process)
 
     def test_is_alive_when_process_is_running(self):
-        self.process.start()
-        pid_dump = self.process.pid
+        process = Process(target=lambda: time.sleep(100))
 
-        self.assertTrue(self.process.is_alive)
-        self.assertTrue(psutil.Process(pid_dump).is_running())
+        process.start()
+        pid_dump = process.pid
+
+        assert process.is_alive is True
+        assert psutil.Process(pid_dump).is_running()
 
         # Nota: no need to waitpid as Process already
         # handles the child process waitpid system call
         # when SIGCHLD signal is triggered
         os.kill(pid_dump, signal.SIGTERM)
-        self.process.wait()
+        process.wait()
+
+        _collect_process(process)
 
     def test_run_calls_target(self):
         def dummy_target(data):
@@ -365,57 +383,73 @@ class TestProcess(unittest.TestCase):
         p = Process(target=dummy_target, args=(dummy_value,))
         p.run()
 
-        self.assertTrue('abc' in dummy_value)
-        self.assertEqual(dummy_value, {'abc': '123'})
+        assert 'abc' in dummy_value
+        assert dummy_value, {'abc': '123'}
+
+        _collect_process(p)
 
     def test_run_ignores_none_target(self):
         p = Process()
         p.run()
-        self.assertTrue(p.target == None)
+        assert p.target == None
+
+        _collect_process(p)
 
     def test_start_calls_run(self):
-        self.process.start()
-        pid_dump = self.process.pid
+        process = Process(target=lambda: time.sleep(100))
+
+        process.start()
+        pid_dump = process.pid
 
         # assert the process is started and alive, when can be sure
         # it runs the run() method as child process will exit as soon
         # as run() returns.
-        self.assertTrue(self.process.is_alive)
-        self.assertTrue(psutil.Process(pid_dump).is_running())
+        assert process.is_alive is True
+        assert psutil.Process(pid_dump).is_running()
 
         os.kill(pid_dump, signal.SIGTERM)
-        self.process.wait()
+        process.wait()
 
-        with self.assertRaises(psutil.NoSuchProcess):
+        with pytest.raises(psutil.NoSuchProcess):
             psutil.Process(pid_dump).is_running()
+
+        _collect_process(process)
 
     def test_start_returns_process_pid(self):
-        pid = self.process.start()
-        pid_dump = self.process.pid
+        process = Process(target=lambda: time.sleep(100))
 
-        self.assertEqual(pid, pid_dump)
+        pid = process.start()
+        pid_dump = process.pid
+
+        assert pid, pid_dump
 
         os.kill(pid_dump, signal.SIGTERM)
-        self.process.wait()
+        process.wait()
 
-        with self.assertRaises(psutil.NoSuchProcess):
+        with pytest.raises(psutil.NoSuchProcess):
             psutil.Process(pid_dump).is_running()
+
+        _collect_process(process)
 
     def test_start_raises_if_already_running(self):
-        self.process.start()
-        pid_dump = self.process.pid
+        process = Process(target=lambda: time.sleep(100))
 
-        self.assertTrue(self.process.is_alive)
-        self.assertTrue(psutil.Process(pid_dump).is_running())
+        process.start()
+        pid_dump = process.pid
 
-        with self.assertRaises(RuntimeError):
-            self.process.start()
+        assert process.is_alive is True
+        assert psutil.Process(pid_dump).is_running()
+
+        with pytest.raises(RuntimeError):
+            process.start()
 
         os.kill(pid_dump, signal.SIGTERM)
-        self.process.wait()
+        process.wait()
 
-        with self.assertRaises(psutil.NoSuchProcess):
+        with pytest.raises(psutil.NoSuchProcess):
             psutil.Process(pid_dump).is_running()
+
+        _collect_process(process)
 
     def test_join_awaits_on_process_exit(self):
         from multiprocessing import Queue
@@ -425,16 +459,21 @@ class TestProcess(unittest.TestCase):
         process.start()
         pid_dump = process.pid
 
-        self.assertTrue(process.is_alive)
-        self.assertTrue(psutil.Process(pid_dump).is_running())
+        assert process.is_alive is True
+        assert psutil.Process(pid_dump).is_running()
 
         queue.put('1')
         process.join()
 
+        _collect_process(process)
+
     def test_join_raises_when_child_does_not_exist(self):
         process = Process()
-        with self.assertRaises(RuntimeError):
+
+        with pytest.raises(RuntimeError):
             process.join()
+
+        _collect_process(process)
 
     def test_terminate_shutsdown_child_process(self):
         from multiprocessing import Queue
@@ -444,34 +483,42 @@ class TestProcess(unittest.TestCase):
         process.start()
         pid_dump = process.pid
 
-        self.assertTrue(process.is_alive)
-        self.assertTrue(psutil.Process(pid_dump).is_running())
+        assert process.is_alive is True
+        assert psutil.Process(pid_dump).is_running()
 
         process.terminate(wait=True)
+
+        _collect_process(process)
 
     # def test_terminate_returns_a_failure_exit_code(self):
     #     process = Process(target=lambda: time.sleep(100))
     #     process.start()
     #     pid_dump = process.pid
 
-    #     self.assertTrue(process.is_alive)
-    #     self.assertTrue(psutil.Process(pid_dump).is_running())
+    #     assert process.is_alive)
+    #     assert psutil.Process(pid_dump).is_running())
 
     #     process.terminate(wait=True)
 
-    #     self.assertTrue(hasattr(process, '_exitcode'))
-    #     self.assertTrue(process._exitcode >= 1)
+    #     assert hasattr(process, '_exitcode'))
+    #     assert process._exitcode >= 1)
 
-    #     self.assertFalse(process.is_alive)
-    #     with self.assertRaises(psutil.NoSuchProcess):
+    #     assert process.is_alive)
+    #     with pytest.raises(psutil.NoSuchProcess):
     #         psutil.Process(pid_dump).is_running()
 
     def test_terminate_raises_when_child_does_not_exist(self):
         process = Process()
 
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             process.terminate()
 
+        _collect_process(process)
+
     def test_restart_raises_with_invalid_policy(self):
-        with self.assertRaises(ValueError):
-            self.process.restart("that's definetly invalid")
+        process = Process(target=lambda: time.sleep(100))
+
+        with pytest.raises(ValueError):
+            process.restart("that's definetly invalid")
+
+        _collect_process(process)
