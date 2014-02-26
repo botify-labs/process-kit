@@ -5,6 +5,7 @@ import multiprocessing as mp
 
 from pkit.process import Process
 from pkit.pool import ProcessPool, Task
+from pkit.utils import wait
 
 
 class TestTask:
@@ -35,7 +36,9 @@ class TestProcessPool:
         pp.execute(target=lambda q: q.get(), args=(queue,))
         assert pp.slots.free == 0
         queue.put('abc')
-        time.sleep(0.1)  # Let some time for the on_exit callback execution
+
+        wait(until=lambda slots: slots.free == 1, args=(pp.slots,), timeout=0.5)
+
         assert pp.slots.free == 1
 
     def test_execute_keeps_tasks_store_up_to_date(self):
@@ -45,7 +48,9 @@ class TestProcessPool:
         pp.execute(target=lambda q: q.get(), args=(queue,))
         assert len(pp._tasks) == 1
         queue.put('abc')
-        time.sleep(0.1)  # Let some time for the on_exit callback execution
+
+        wait(until=lambda pp: len(pp._tasks) == 0, args=(pp,), timeout=0.5)
+
         assert len(pp._tasks) == 0
 
     def test_execute_creates_an_up_to_date_task(self):
@@ -57,7 +62,9 @@ class TestProcessPool:
         assert task.status == Task.RUNNING
 
         queue.put('abc')
-        time.sleep(0.1)
+
+        wait(until=lambda t: t.status == Task.FINISHED, args=(task,), timeout=0.5)
+
         assert task.status == Task.FINISHED
 
 # Will be reactivated once the process.join will be fixed
