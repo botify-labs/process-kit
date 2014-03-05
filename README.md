@@ -13,7 +13,7 @@ So we've decided to try to clean it a bit, simplify it, and make it more obvious
 #### Additional resources for the curious
 
 * Process-kit presentation: https://speakerdeck.com/botify/fixing-the-process
-* Blog post about the what, the why, and the how: https://labs.botify.com/blog/process-kit-fixing-process/
+* Blog post about the what, the why, and the how: https://labs.botify.com/blog/process-kit-why-and-how-we-decided-to-rewrite-python-s-process-class/
 
 
 ## Installation
