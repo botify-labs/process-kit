@@ -6,7 +6,6 @@ import signal
 import select
 import traceback
 
-from multiprocessing.forking import Popen
 
 JOIN_RESTART_POLICY = 0
 TERMINATE_RESTART_POLICY = 1
@@ -18,7 +17,8 @@ def get_current_process():
             self._child = None
             self._parent = None
             self._parent_pid = None
-            self.name = 'MainProcess {1}'.format(self.__class__.__name__, os.getpid())
+            self.name = 'MainProcess {1}'.format(self.__class__.__name__,
+                                                 os.getpid())
             self.daemonic = False
 
         @property
@@ -55,7 +55,6 @@ class ProcessOpen(object):
         self.pid = os.fork()
         if self.pid == 0:
             signal.signal(signal.SIGTERM, self.on_sigterm)
-
             # Once the child process has it's signal handler
             # binded we warn the parent process through a pipe
             if wait is True:
@@ -67,7 +66,9 @@ class ProcessOpen(object):
             os._exit(returncode)
         else:
             if wait is True:
-                self.ready = self._poll_ready_flag(read_pipe, write_pipe, wait_timeout)
+                self.ready = self._poll_ready_flag(read_pipe,
+                                                   write_pipe,
+                                                   wait_timeout)
 
     def _send_ready_flag(self, write_pipe, read_pipe=None):
         """Ran in the forked child process"""
@@ -87,7 +88,8 @@ class ProcessOpen(object):
             read, _, _ = select.select([read_pipe], [], [], timeout)
         except select.error as e:
             if hasattr(e, 'errno') and e.errno == errno.EINTR:
-                return False  # If select is interrupted, we don't care about ready flag
+                # If select() is interrupted, don't care about the ready flag
+                return False
         if len(read) > 0:
             return True
 
@@ -103,6 +105,7 @@ class ProcessOpen(object):
                         continue
                     # Child process not yet created. See #1731717
                     # e.errno == errno.ECHILD == 10
+                    # or, child has already exited.
                     return None
                 else:
                     break
@@ -121,7 +124,8 @@ class ProcessOpen(object):
         It uses os.waitpid under the hood, and checks for the
         forked process exit code status.
 
-        Poll method source code: http://hg.python.org/cpython/file/ab05e7dd2788/Lib/multiprocessing/forking.py
+        Poll method source code:
+        http://hg.python.org/cpython/file/ab05e7dd2788/Lib/multiprocessing/forking.py
 
         :param  timeout: time interval to poll the forked process status
         :type   timeout: float
@@ -151,26 +155,6 @@ class ProcessOpen(object):
 
         return returncode
 
-
-    # def wait(self, timeout=None):
-    #     """Polls the forked process for it's status.
-
-    #     It uses os.waitpid under the hood, and checks for the
-    #     forked process exit code status.
-
-    #     Poll method source code: http://hg.python.org/cpython/file/ab05e7dd2788/Lib/multiprocessing/forking.py
-
-    #     :param  timeout: time interval to poll the forked process status
-    #     :type   timeout: float
-
-    #     :returns: the forked process exit code status
-    #     :rtype: int
-    #     """
-    #     returncode = super(ProcessOpen, self).wait(timeout)
-    #     self.process.clean()
-
-    #     return returncode
-
     def terminate(self):
         """Kills the running forked process using the SIGTERM signal
 
@@ -184,7 +168,7 @@ class ProcessOpen(object):
         if self.returncode is None:
             try:
                 os.kill(self.pid, signal.SIGTERM)
-            except OSError as e:
+            except OSError:
                 if self.wait(timeout=0.1) is None:
                     raise
 
@@ -282,7 +266,8 @@ class Process(object):
                 returncode = 0 if isinstance(err.args[0], str) else 1
         except:
             returncode = 1
-            sys.stderr.write('Process {} with pid {}:\n'.format(self.name, self.pid))
+            sys.stderr.write('Process {} with pid {}:\n'.format(self.name,
+                                                                self.pid))
             sys.stderr.flush()
             traceback.print_exc()
 
@@ -349,7 +334,7 @@ class Process(object):
 
         if policy == JOIN_RESTART_POLICY:
             self.join()
-        elif policy == TERMINTE_RESTART_POLICY:
+        elif policy == TERMINATE_RESTART_POLICY:
             pid_dump = self.pid
             self.terminate()
             os.waitpid(pid_dump, 0)
@@ -433,7 +418,8 @@ class Process(object):
     def name(self, value):
         if not isinstance(value, str):
             raise TypeError(
-                "Name property value has to be a basestring subclass instance. "
+                "Name property value has to be a "
+                "basestring subclass instance. "
                 "Got {0} instead.".format(type(value))
             )
 
