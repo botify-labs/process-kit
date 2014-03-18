@@ -20,7 +20,7 @@ class TestTask:
             t.status = "ABC 123"
 
     def test_finish_sets_status_to_finished(self):
-        t = Task(1234)
+        t = Task(Process())
         t.finish()
 
         assert t.status == Task.FINISHED
@@ -96,14 +96,13 @@ class TestProcessPool:
         pp.slots.acquire()
         assert pp.slots.free == 0
 
-        task = Task(1234)
         process = Process()
-        pp._tasks[1234] = {
-            'task': task,
-            'process': process,
-        }
+        process._child = lambda: None
+        process._child.pid = 1234
+        task = Task(process)
+        pp._tasks[1234] = task
 
-        pp.on_process_exit(1234)
+        pp.on_process_exit(process)
         assert pp.slots.free == 1
         assert 1234 not in pp._tasks
         assert task.status == Task.FINISHED
