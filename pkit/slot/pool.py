@@ -30,5 +30,5 @@ class SlotPool(object):
 
     def reset(self):
         del self._semaphore
-        self._semaphore = multiprocessing.BoundedSemaphore(self.size)
+        self._semaphore = multiprocessing.Semaphore(self.size)
         self.free = self.size
