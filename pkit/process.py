@@ -229,14 +229,7 @@ class Process(object):
 
     def on_sigchld(self, signum, sigframe):
         if self._child is not None and self._child.pid:
-            pid, status = os.waitpid(self._child.pid, os.WNOHANG)
-            if pid == self._child.pid:
-                self._exitcode = os.WEXITSTATUS(status)
-
-            if self._on_exit:
-                self._on_exit(self)
-
-            self.clean()
+            self.join()
 
     def create(self):
         """Method to be called when the process child is forked"""
@@ -306,6 +299,8 @@ class Process(object):
         :param  timeout: Time to wait for the process exit
         :type   timeout: float
         """
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+
         if self._child is None:
             raise RuntimeError("Can only join a started process")
 
@@ -313,6 +308,11 @@ class Process(object):
             self._exitcode = self._child.wait(timeout)
         except OSError:
             pass
+
+        if self._on_exit:
+            self._on_exit(self)
+
+        self.clean()
 
     def terminate(self, wait=False):
         """Forces the process to stop

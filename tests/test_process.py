@@ -521,3 +521,19 @@ class TestProcess:
             process.restart("that's definetly invalid")
 
         _collect_process(process)
+
+    def test_process_on_exit_is_called(self):
+        def acquire():
+            sem.acquire()
+
+        def release(process):
+            sem.release()
+
+        from multiprocessing import Semaphore
+        sem = Semaphore(1)
+
+        process = Process(target=acquire,
+                          on_exit=release)
+        process.start(wait=True)
+        process.join()
+        assert sem.get_value() == 1
