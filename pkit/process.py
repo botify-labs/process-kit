@@ -217,7 +217,7 @@ class Process(object):
         self.target_args = tuple(args)
         self.target_kwargs = dict(kwargs)
 
-        # Bind signals handlers
+    def bind_signal_handlers(self):
         signal.signal(signal.SIGCHLD, self.on_sigchld)
         signal.siginterrupt(signal.SIGCHLD, False)
 
@@ -293,6 +293,7 @@ class Process(object):
         if self._child is not None:
             raise RuntimeError("Cannot start a process twice")
 
+        self.bind_signal_handlers()
         self._child = ProcessOpen(self, wait=wait, wait_timeout=wait_timeout)
         child_pid = self._child.pid
         self._current = self
