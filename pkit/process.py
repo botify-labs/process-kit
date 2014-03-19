@@ -7,6 +7,9 @@ import select
 import traceback
 
 
+from pkit import signals
+
+
 JOIN_RESTART_POLICY = 0
 TERMINATE_RESTART_POLICY = 1
 
@@ -54,7 +57,8 @@ class ProcessOpen(object):
 
         self.pid = os.fork()
         if self.pid == 0:
-            signal.signal(signal.SIGTERM, self.on_sigterm)
+            signals.register(signal.SIGTERM, self.on_sigterm)
+
             # Once the child process has it's signal handler
             # binded we warn the parent process through a pipe
             if wait is True:
