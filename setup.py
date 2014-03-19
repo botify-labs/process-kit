@@ -22,6 +22,8 @@ setup(
     packages=[
         'pkit',
 
-        'pkit.slot'
+        'pkit.slot',
+
+        'pkit.signals',
     ],
 )
