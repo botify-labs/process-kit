@@ -70,6 +70,10 @@ class ProcessOpen(object):
                                                    write_pipe,
                                                    wait_timeout)
 
+    @property
+    def is_running(self):
+        return self.returncode is None
+
     def _send_ready_flag(self, write_pipe, read_pipe=None):
         """Ran in the forked child process"""
         if read_pipe is not None:
@@ -96,7 +100,7 @@ class ProcessOpen(object):
         return False
 
     def poll(self, flag=os.WNOHANG):
-        if self.returncode is None:
+        if self.is_running:
             while True:
                 try:
                     pid, sts = os.waitpid(self.pid, flag)
