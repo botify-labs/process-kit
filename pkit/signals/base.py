@@ -2,7 +2,7 @@ import signal
 import collections
 
 
-__all__ = ['register']
+__all__ = ['register', 'unregister']
 
 
 SIGNAL_NUMBERS = {v for k, v in vars(signal).iteritems() if
@@ -29,3 +29,16 @@ def register(signum, handler):
         signal.signal(signum, call_signal_handler(signum))
 
     SIGNAL_HANDLERS[signum].append(handler)
+
+
+def unregister(signum, handler):
+    if signum not in SIGNAL_HANDLERS:
+        raise LookupError('signal number {} not found'.format(signum))
+
+    handlers = SIGNAL_HANDLERS[signum]
+    try:
+        handlers.remove(handler)
+    except ValueError:
+        raise LookupError('handler {} not found for signal number {}'.format(
+                          handler,
+                          signum))

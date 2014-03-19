@@ -50,3 +50,45 @@ class TestRegister(TestBase):
 
         self.assertEquals(base.SIGNAL_HANDLERS[base.signal.SIGTERM],
                           [handler1, handler2])
+
+
+class TestUnregister(unittest.TestCase):
+    def test_unregister_one_handler(self):
+        def handler(*args):
+            return
+
+        base.register(base.signal.SIGTERM, handler)
+        base.unregister(base.signal.SIGTERM, handler)
+        self.assertEquals(base.SIGNAL_HANDLERS[base.signal.SIGTERM],
+                          [])
+
+    def test_unregister_two_handlers(self):
+        def handler1(*args):
+            return
+
+        def handler2(*args):
+            return
+
+        base.register(base.signal.SIGTERM, handler1)
+        base.register(base.signal.SIGTERM, handler2)
+
+        base.unregister(base.signal.SIGTERM, handler1)
+        self.assertEquals(base.SIGNAL_HANDLERS[base.signal.SIGTERM],
+                          [handler2])
+
+        base.unregister(base.signal.SIGTERM, handler2)
+        self.assertEquals(base.SIGNAL_HANDLERS[base.signal.SIGTERM],
+                          [])
+
+    def test_unregister_signal_not_found(self):
+        with self.assertRaises(LookupError):
+            base.unregister(base.signal.SIGTERM, 'test')
+
+    def test_unregister_handler_not_found(self):
+        def handler(*args):
+            return
+
+        base.register(base.signal.SIGTERM, handler)
+
+        with self.assertRaises(LookupError):
+            base.unregister(base.signal.SIGTERM, 'test')
