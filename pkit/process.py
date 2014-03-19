@@ -383,7 +383,7 @@ class Process(object):
                     pass
                 return True
 
-        if until is not None and not hasattr(until, '__call__'):
+        if until is not None and not callable(until):
             raise ValueError("Until parameter must be a callable")
 
         timeout = timeout or 0.1
