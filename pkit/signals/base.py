@@ -1,12 +1,12 @@
 import signal
 import collections
 
+from pkit.signals import constants
+
 
 __all__ = ['register', 'unregister']
 
 
-SIGNAL_NUMBERS = {v for k, v in vars(signal).iteritems() if
-                  k.startswith('SIG')}
 SIGNAL_HANDLERS = collections.defaultdict(list)
 
 
@@ -19,7 +19,7 @@ def call_signal_handler(signum):
 
 
 def register(signum, handler):
-    if signum not in SIGNAL_NUMBERS:
+    if signum not in constants.SIGNAL_NUMBERS:
         raise ValueError('Unknow signal number {}'.format(signum))
 
     if not callable(handler):
