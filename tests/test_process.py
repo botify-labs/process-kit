@@ -246,7 +246,7 @@ class TestProcessOpen:
         process_pid = process_open.pid
 
         process_open.terminate()
-        pid, status = os.waitpid(process_pid, 0)
+        process_open.wait()
 
         assert pid is not None
         assert pid == process_pid

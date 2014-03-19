@@ -169,16 +169,11 @@ class ProcessOpen(object):
         The process object cleanup routine method is then called
         to make sur the object _child attribute is set to None
         """
-        if self.returncode is None:
-            try:
-                os.kill(self.pid, signal.SIGTERM)
-            except OSError:
-                if self.wait(timeout=0.1) is None:
-                    raise
+        if not self.is_running:
+            return False
 
-            self.returncode = 1
-
-        return self.returncode
+        os.kill(self.pid, signal.SIGTERM)
+        return True
 
     def on_sigterm(self, signum, sigframe):
         """Subprocess sigterm signal handler"""
