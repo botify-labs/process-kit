@@ -183,7 +183,7 @@ class ProcessOpen(object):
     def on_sigterm(self, signum, sigframe):
         """Subprocess sigterm signal handler"""
         self.returncode = 1
-        os._exit(1)
+        os._exit(self.returncode)
 
 
 class Process(object):
