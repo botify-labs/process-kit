@@ -11,9 +11,9 @@ SIGNAL_HANDLERS = collections.defaultdict(list)
 
 
 def call_signal_handler(signum):
-    def handle_signal(*args, **kwargs):
+    def handle_signal(signum, sigframe):
         for handler in SIGNAL_HANDLERS[signum]:
-            handler(*args, **kwargs)
+            handler(signum, sigframe)
 
     return handle_signal
 
