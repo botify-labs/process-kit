@@ -243,14 +243,10 @@ class TestProcessOpen:
 
         # Wait for the fork to be made, and the signal to be binded
         process_open = ProcessOpen(process, wait=True)
-        process_pid = process_open.pid
 
         process_open.terminate()
         process_open.wait()
 
-        assert pid is not None
-        assert pid == process_pid
-        assert os.WEXITSTATUS(status) == 1
         assert process_open.returncode == 1
 
         _collect_process(process)
