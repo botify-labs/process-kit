@@ -1,5 +1,6 @@
 import pytest
 import time
+from decimal import Decimal
 
 from pkit.utils import wait
 from pkit.exceptions import TimeoutError
@@ -14,13 +15,15 @@ def test_wait_respects_timeout():
     a = 1
     raised = False
 
+    timeout = Decimal(0.1)
+    error_margin = timeout / Decimal(10)
+
     before_ts = time.time()
     try:
-        wait(until=lambda v: v > 1, args=(a,), timeout=0.1)
+        wait(until=lambda v: v > 1, args=(a,), timeout=timeout)
     except TimeoutError:
         raised = True
     after_ts = time.time()
 
     assert raised is True
-    assert after_ts > before_ts
-    assert (after_ts - before_ts) >= 0.1
+    assert abs((after_ts - before_ts) - 0.1) < error_margin
