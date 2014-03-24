@@ -1,7 +1,4 @@
-import os
 import uuid
-import copy
-import signal
 
 from pkit.process import Process
 from pkit.slot import SlotPool
@@ -9,7 +6,7 @@ from pkit.slot import SlotPool
 
 class Task(object):
     """Tracks a ProcessPool execution
-    
+
     :param  process_pid: process execution pid to track
     :type   process_pid: int
 
@@ -126,7 +123,7 @@ class ProcessPool(object):
 
     def close(self, timeout=None):
         self.ready = False
-        processes_to_join = [task['process'] for (pid,task) in
+        processes_to_join = [task['process'] for (pid, task) in
                              self._tasks.items()]
 
         for process in processes_to_join:
@@ -134,7 +131,7 @@ class ProcessPool(object):
 
     def terminate(self, wait=False):
         self.ready = False
-        processes_to_stop = [task['process'] for (pid,task) in
+        processes_to_stop = [task['process'] for (pid, task) in
                              self._tasks.items()]
 
         for process in processes_to_stop:
