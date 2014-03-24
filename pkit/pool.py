@@ -27,9 +27,10 @@ class Task(object):
         FINISHED
     )
 
-    def __init__(self, process_pid, _id=None, status=None):
-        self.id = _id or uuid.uuid4().hex 
+    def __init__(self, process, _id=None, status=None):
+        self.id = _id or uuid.uuid4().hex
         self.exitcode = None
+        self.process = process
 
         if status:
             self.status = status
@@ -108,39 +109,33 @@ class ProcessPool(object):
             target=target,
             args=args,
             kwargs=kwargs,
-            on_exit=lambda p: self.on_process_exit(p.pid),
+            on_exit=self.on_process_exit,
         )
 
         process_pid = process.start(wait=True)
-        task = Task(process_pid, status=Task.RUNNING)
+        task = Task(process, status=Task.RUNNING)
 
-        self._tasks[process_pid] = {
-            'task': task,
-            'process': process
-        }
+        self._tasks[process_pid] = task
 
         return task
 
     def close(self, timeout=None):
         self.ready = False
-        processes_to_join = [task['process'] for (pid, task) in
-                             self._tasks.items()]
 
-        for process in processes_to_join:
-            process.join(timeout=timeout)
+        for task in list(self._task.values()):
+            task.process.join(timeout=timeout)
 
     def terminate(self, wait=False):
         self.ready = False
-        processes_to_stop = [task['process'] for (pid, task) in
-                             self._tasks.items()]
 
-        for process in processes_to_stop:
-            process.terminate(wait=wait)
+        for task in list(self._tasks.values()):
+            task.process.terminate(wait=wait)
 
-    def on_process_exit(self, pid):
+    def on_process_exit(self, process):
         self.slots.release()
 
+        pid = process.pid
         if pid in self._tasks:
-            self._tasks[pid]['task'].status = Task.FINISHED
-            self._tasks[pid]['task'].exitcode = self._tasks[pid]['process'].exitcode
+            self._tasks[pid].status = Task.FINISHED
+            self._tasks[pid].exitcode = self._tasks[pid].process.exitcode
             del self._tasks[pid]
