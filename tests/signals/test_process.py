@@ -4,6 +4,15 @@ import pkit.process
 from pkit import signals
 
 from pkit.signals.base import call_signal_handler
+from pkit.signals.base import SIGNAL_HANDLERS
+
+
+def setup_module():
+    pkit.signal.base.reset()
+
+
+def teardown_module():
+    pkit.signal.base.reset()
 
 
 def test_register_process():
@@ -20,7 +29,7 @@ def test_register_process():
         process,
         process.on_sigchld)
 
-    with mock.patch('os.waitpid', return_value=(pid, 0)):
+    with mock.patch('os.wait', return_value=(pid, 0)):
         call_signal_handler(SIGCHLD)(SIGCHLD, None)
 
     assert vals == ['OK']
@@ -53,10 +62,12 @@ def test_register_two_process():
         process2,
         process2.on_sigchld)
 
-    with mock.patch('os.waitpid', return_value=(pid1, 0)):
+    assert len(SIGNAL_HANDLERS[SIGCHLD]) == 1
+
+    with mock.patch('os.wait', return_value=(pid1, 0)):
         call_signal_handler(SIGCHLD)(SIGCHLD, None)
 
-    with mock.patch('os.waitpid', return_value=(pid2, 0)):
+    with mock.patch('os.wait', return_value=(pid2, 0)):
         call_signal_handler(SIGCHLD)(SIGCHLD, None)
 
-    assert vals == (1, 2)
+    assert vals == [1, 2]
