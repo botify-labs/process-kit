@@ -386,12 +386,20 @@ class Process(object):
         :type   timeout: float
         """
         def default_until(self, *args):
-            if self._child is not None:
-                try:
-                    self._child.wait(timeout)
-                except OSError:
-                    pass
-                return True
+            if self._child is None:
+                return False
+
+            exitcode = None
+            try:
+                # FIXME: I'm an ugly implicit side-effect!
+                exitcode = self._child.wait(timeout)
+            except OSError:
+                return False
+
+            if exitcode is not None:
+                self._exitcode = exitcode
+
+            return True
 
         if until is not None and not callable(until):
             raise ValueError("Until parameter must be a callable")
