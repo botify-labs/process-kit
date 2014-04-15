@@ -236,7 +236,7 @@ class Process(object):
             self.on_sigchld)
 
         if self._child is not None and self._child.pid:
-            self.join()
+            self.exit()
 
     def create(self):
         """Method to be called when the process child is forked"""
@@ -293,12 +293,18 @@ class Process(object):
         if self._child is not None:
             raise RuntimeError("Cannot start a process twice")
 
-        self.bind_signal_handlers()
         self._child = ProcessOpen(self, wait=wait, wait_timeout=wait_timeout)
+        self.bind_signal_handlers()
         child_pid = self._child.pid
         self._current = self
 
         return child_pid
+
+    def exit(self):
+        if self._on_exit:
+            self._on_exit(self)
+
+        self.clean()
 
     def join(self, timeout=None):
         """Awaits on Process exit
@@ -311,15 +317,10 @@ class Process(object):
         if self._child is None:
             raise RuntimeError("Can only join a started process")
 
-        try:
-            self._exitcode = self._child.wait(timeout)
-        except OSError:
-            pass
+        # FIXME: self._exitcode set inside self.wait()
+        self.wait()
 
-        if self._on_exit:
-            self._on_exit(self)
-
-        self.clean()
+        self.exit()
 
     def terminate(self, wait=False):
         """Forces the process to stop
@@ -334,7 +335,8 @@ class Process(object):
         self._child.terminate()
 
         if wait:
-            self.wait(until=lambda p, *args: p._child is None)
+            self.wait()
+            self.exit()
 
     def restart(self, policy=JOIN_RESTART_POLICY):
         if not policy in [JOIN_RESTART_POLICY, TERMINATE_RESTART_POLICY]:
