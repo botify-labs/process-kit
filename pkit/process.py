@@ -159,8 +159,6 @@ class ProcessOpen(object):
             delay = min(delay * 2, remaining, 0.05)
             time.sleep(delay)
 
-        self.process.clean()
-
         return returncode
 
     def terminate(self):
