@@ -10,6 +10,10 @@ __all__ = ['register', 'unregister']
 SIGNAL_HANDLERS = collections.defaultdict(list)
 
 
+def reset():
+    SIGNAL_HANDLERS = collections.defaultdict(list)
+
+
 def call_signal_handler(signum):
     def handle_signal(signum, sigframe):
         for handler in SIGNAL_HANDLERS[signum]:
