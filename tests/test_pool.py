@@ -1,14 +1,30 @@
 import pytest
 
-import time
 import multiprocessing as mp
 
 from pkit.process import Process
 from pkit.pool import ProcessPool, Task
 from pkit.utils import wait
+import pkit.signals
 
 
-class TestTask:
+def setup_module():
+    pkit.signals.base.reset()
+
+
+def teardown_module():
+    pkit.signals.base.reset()
+
+
+class PoolTestCase:
+    def setup_method(self):
+        pkit.signals.base.reset()
+
+    def teardown_method(self):
+        pkit.signals.base.reset()
+
+
+class TestTask(PoolTestCase):
     def test_task_has_default_status(self):
         t = Task(1234)
         assert t.status == Task.READY
@@ -26,18 +42,22 @@ class TestTask:
         assert t.status == Task.FINISHED
 
 
-class TestProcessPool:
+class TestProcessPool(PoolTestCase):
     def test_execute_acquires_and_releases_slot(self):
         queue = mp.Queue()
         pp = ProcessPool(1)
 
         assert pp.slots.free == 1
 
-        pp.execute(target=lambda q: q.get(), args=(queue,))
+        pp.execute(target=queue.get)
         assert pp.slots.free == 0
-        queue.put('abc')
+        queue.put('')
 
-        wait(until=lambda slots: slots.free == 1, args=(pp.slots,), timeout=0.5)
+        # If it timeouts, it means that pp.slots.release() was not called when
+        # the child process exited.
+        print('waiting...')
+        wait(until=lambda: pp.slots.free == 1,
+             timeout=0.5)
 
         assert pp.slots.free == 1
 
