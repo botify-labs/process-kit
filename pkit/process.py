@@ -417,9 +417,7 @@ class Process(object):
         if self._child is None or not self._child.pid:
             return False
 
-        self._child.poll()
-
-        return self._child.returncode is None
+        return self._child.is_running
 
     @property
     def exitcode(self):
