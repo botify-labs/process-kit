@@ -219,8 +219,9 @@ class Process(object):
         self.target_kwargs = dict(kwargs)
 
     def bind_signal_handlers(self):
-        signal.signal(signal.SIGCHLD, self.on_sigchld)
-        signal.siginterrupt(signal.SIGCHLD, False)
+        signals.process.register(
+            signals.constants.SIGCHLD,
+            self, self.on_sigchld)
 
     def __str__(self):
         return '<{0} {1}>'.format(self.name, self.pid)
@@ -229,6 +230,11 @@ class Process(object):
         return self.__str__()
 
     def on_sigchld(self, signum, sigframe):
+        signals.process.unregister(
+            signals.constants.SIGCHLD,
+            self,
+            self.on_sigchld)
+
         if self._child is not None and self._child.pid:
             self.join()
 
