@@ -132,6 +132,9 @@ class ProcessPool(object):
             task.process.terminate(wait=wait)
 
     def on_process_exit(self, process):
+        if process.pid is None:  # Already handled.
+            return
+
         self.slots.release()
 
         pid = process.pid
