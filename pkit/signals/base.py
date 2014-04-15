@@ -16,6 +16,9 @@ def reset():
 
 def call_signal_handler(signum):
     def handle_signal(signum, sigframe):
+        if signum not in SIGNAL_HANDLERS:
+            return None
+
         for handler in SIGNAL_HANDLERS[signum]:
             handler(signum, sigframe)
 
@@ -29,7 +32,7 @@ def register(signum, handler):
     if not callable(handler):
         raise TypeError('handler must be callable')
 
-    if signum not in SIGNAL_HANDLERS:
+    if signum not in SIGNAL_HANDLERS or not SIGNAL_HANDLERS[signum]:
         signal.signal(signum, call_signal_handler(signum))
 
     SIGNAL_HANDLERS[signum].append(handler)
