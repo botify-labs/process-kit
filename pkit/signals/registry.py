@@ -27,5 +27,8 @@ class HandlerRegistry(object):
 
     def __call__(self, signum, sigframe):
         key = self._extract_from(signum, sigframe)
+        if key not in self._handlers:
+            return
+
         for handler in self._handlers[key]:
-            handler()
+            handler(signum, sigframe)
