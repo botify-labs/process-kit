@@ -1,8 +1,8 @@
 import unittest
 import multiprocessing
 
-from botify.saas.backend.process.slot.pool import SlotPool
-from botify.saas.backend.process.slot.core import get_slot_pool
+from pkit.slot.pool import SlotPool
+from pkit.slot.core import get_slot_pool
 
 
 class GetSlotPoolTest(unittest.TestCase):

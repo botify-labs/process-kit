@@ -1,6 +1,6 @@
 import unittest
 
-from botify.saas.backend.process.slot.pool import SlotPool
+from pkit.slot.pool import SlotPool
 
 
 class SlotPoolTest(unittest.TestCase):

@@ -1,7 +1,7 @@
 import unittest
 
-from botify.saas.backend.process.slot.core import get_slot_pool
-import botify.saas.backend.process.slot as slot
+from pkit.slot.core import get_slot_pool
+import pkit.slot as slot
 
 
 class SlotPoolDecoratorsTest(unittest.TestCase):

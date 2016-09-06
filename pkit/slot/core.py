@@ -23,7 +23,7 @@ def get_slot_pool(name, pool_size=_default_slot_pool_size):
     :type       pool_size: int
 
     :returns: Retrieved or created slot pool
-    :rtype: botify.saas.backend.process.slot.pool.SlotPool
+    :rtype: pkit.slot.pool.SlotPool
     """
     if name not in _slot_pools:
         _slot_pools[name] = SlotPool(pool_size)
